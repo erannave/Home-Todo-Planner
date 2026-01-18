@@ -75,6 +75,24 @@ docker compose logs -f
 docker compose down
 ```
 
+Configuration is in `stack.env`:
+```env
+ALLOW_SIGNUPS=true
+PORT=3000
+DATA_PATH=/path/to/local/data  # Optional: use local path instead of Docker volume
+```
+
+### Portainer Deployment
+
+1. Push this repo to GitHub/GitLab
+2. In Portainer: **Stacks → Add Stack → Repository**
+3. Enter your repository URL
+4. Deploy — Portainer will use `docker-compose.yml` and `stack.env`
+
+To use a local mount path, either:
+- Set `DATA_PATH` in `stack.env` before pushing
+- Or add `DATA_PATH` in Portainer's environment variables when deploying
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -82,6 +100,7 @@ docker compose down
 | `PORT` | `3000` | Server port |
 | `DATABASE_PATH` | `./data/chores.db` | SQLite database path |
 | `ALLOW_SIGNUPS` | `false` | Enable user registration |
+| `DATA_PATH` | `todo-data` | Docker volume or local path for data persistence |
 
 ### Demo Account
 
