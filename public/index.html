@@ -713,41 +713,74 @@
         },
 
         async register() {
+          this.authError = '';
+
+          if (!this.authEmail || !this.authEmail.includes('@')) {
+            this.authError = 'Please enter a valid email address';
+            return;
+          }
+
+          if (this.authPassword.length < 6) {
+            this.authError = 'Password must be at least 6 characters';
+            return;
+          }
+
           if (this.authPassword !== this.authConfirmPassword) {
             this.authError = 'Passwords do not match';
             return;
           }
-          const res = await fetch('/api/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: this.authEmail, password: this.authPassword })
-          });
-          const data = await res.json();
-          if (data.error) {
-            this.authError = data.error;
-          } else {
-            this.user = { email: data.email };
-            this.authEmail = '';
-            this.authPassword = '';
-            this.authConfirmPassword = '';
-            await this.loadData();
+
+          try {
+            const res = await fetch('/api/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: this.authEmail, password: this.authPassword })
+            });
+            const data = await res.json();
+            if (data.error) {
+              this.authError = data.error;
+            } else {
+              this.user = { email: data.email };
+              this.authEmail = '';
+              this.authPassword = '';
+              this.authConfirmPassword = '';
+              await this.loadData();
+            }
+          } catch (error) {
+            this.authError = 'Registration failed. Please try again.';
           }
         },
 
         async login() {
-          const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: this.authEmail, password: this.authPassword })
-          });
-          const data = await res.json();
-          if (data.error) {
-            this.authError = data.error;
-          } else {
-            this.user = { email: data.email };
-            this.authEmail = '';
-            this.authPassword = '';
-            await this.loadData();
+          this.authError = '';
+
+          if (!this.authEmail || !this.authEmail.includes('@')) {
+            this.authError = 'Please enter a valid email address';
+            return;
+          }
+
+          if (!this.authPassword) {
+            this.authError = 'Please enter your password';
+            return;
+          }
+
+          try {
+            const res = await fetch('/api/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: this.authEmail, password: this.authPassword })
+            });
+            const data = await res.json();
+            if (data.error) {
+              this.authError = data.error;
+            } else {
+              this.user = { email: data.email };
+              this.authEmail = '';
+              this.authPassword = '';
+              await this.loadData();
+            }
+          } catch (error) {
+            this.authError = 'Login failed. Please try again.';
           }
         },
 
