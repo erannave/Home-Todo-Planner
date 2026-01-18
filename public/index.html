@@ -70,7 +70,7 @@
               </button>
             </form>
 
-            <p class="mt-4 text-center text-sm text-slate-600">
+            <p class="mt-4 text-center text-sm text-slate-600" x-show="allowSignups || !isLogin">
               <span x-text="isLogin ? `Don't have an account?` : `Already have an account?`"></span>
               <button @click="isLogin = !isLogin; authError = ''" class="text-blue-600 hover:underline ml-1" x-text="isLogin ? 'Sign up' : 'Sign in'"></button>
             </p>
@@ -510,27 +510,65 @@
         categoryForm: { name: '', color: '#6b7280' },
         memberForm: { name: '' },
         presetColors: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280'],
+        allowSignups: true,
+        // Loading and feedback state
+        loading: false,
+        loadingMessage: '',
+        errorMessage: '',
+        toast: { show: false, message: '', type: 'success' },
+
+        showToast(message, type = 'success') {
+          this.toast = { show: true, message, type };
+          setTimeout(() => this.toast.show = false, 3000);
+        },
+
+        showError(msg) {
+          this.errorMessage = msg;
+          setTimeout(() => this.errorMessage = '', 5000);
+        },
 
         async init() {
-          const res = await fetch('/api/me');
-          const data = await res.json();
-          if (data.user) {
-            this.user = data.user;
+          const [meRes, configRes] = await Promise.all([
+            fetch('/api/me'),
+            fetch('/api/config')
+          ]);
+          const meData = await meRes.json();
+          const configData = await configRes.json();
+          this.allowSignups = configData.allowSignups;
+          if (!this.allowSignups) {
+            this.isLogin = true;
+          }
+          if (meData.user) {
+            this.user = meData.user;
             await this.loadData();
           }
         },
 
         async loadData() {
-          const [tasksRes, categoriesRes, membersRes, historyRes] = await Promise.all([
-            fetch('/api/tasks'),
-            fetch('/api/categories'),
-            fetch('/api/members'),
-            fetch('/api/history')
-          ]);
-          this.tasks = await tasksRes.json();
-          this.categories = await categoriesRes.json();
-          this.members = await membersRes.json();
-          this.history = await historyRes.json();
+          this.loading = true;
+          this.loadingMessage = 'Loading data...';
+          try {
+            const [tasksRes, categoriesRes, membersRes, historyRes] = await Promise.all([
+              fetch('/api/tasks'),
+              fetch('/api/categories'),
+              fetch('/api/members'),
+              fetch('/api/history')
+            ]);
+
+            if (!tasksRes.ok || !categoriesRes.ok || !membersRes.ok || !historyRes.ok) {
+              throw new Error('Failed to load data');
+            }
+
+            this.tasks = await tasksRes.json();
+            this.categories = await categoriesRes.json();
+            this.members = await membersRes.json();
+            this.history = await historyRes.json();
+          } catch (error) {
+            this.showError('Failed to load data. Please refresh the page.');
+          } finally {
+            this.loading = false;
+            this.loadingMessage = '';
+          }
         },
 
         async register() {
