@@ -75,22 +75,6 @@ docker compose logs -f
 docker compose down
 ```
 
-Example `compose.yaml`:
-
-```yaml
-services:
-  home-todo-planner:
-    container_name: home-todo-planner
-    build: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - ALLOW_SIGNUPS=true
-    restart: unless-stopped
-```
-
 ### Environment Variables
 
 | Variable | Default | Description |
