@@ -621,6 +621,13 @@
   </div>
 
   <script>
+    // Constants
+    const DEFAULT_INTERVAL_DAYS = 7;
+    const DEFAULT_CATEGORY_COLOR = '#6b7280';
+    const PRESET_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280'];
+    const TOAST_DURATION_MS = 3000;
+    const ERROR_DURATION_MS = 5000;
+
     function app() {
       return {
         user: null,
@@ -647,10 +654,10 @@
         editingTaskId: null,
         editingCategoryId: null,
         editingMemberId: null,
-        taskForm: { name: '', notes: '', interval_days: 7, category_id: '', assigned_member_id: '' },
-        categoryForm: { name: '', color: '#6b7280' },
+        taskForm: { name: '', notes: '', interval_days: DEFAULT_INTERVAL_DAYS, category_id: '', assigned_member_id: '' },
+        categoryForm: { name: '', color: DEFAULT_CATEGORY_COLOR },
         memberForm: { name: '' },
-        presetColors: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280'],
+        presetColors: PRESET_COLORS,
         allowSignups: true,
         // Loading and feedback state
         loading: false,
@@ -660,12 +667,12 @@
 
         showToast(message, type = 'success') {
           this.toast = { show: true, message, type };
-          setTimeout(() => this.toast.show = false, 3000);
+          setTimeout(() => this.toast.show = false, TOAST_DURATION_MS);
         },
 
         showError(msg) {
           this.errorMessage = msg;
-          setTimeout(() => this.errorMessage = '', 5000);
+          setTimeout(() => this.errorMessage = '', ERROR_DURATION_MS);
         },
 
         async init() {
@@ -918,7 +925,7 @@
 
         openTaskModal() {
           this.editingTaskId = null;
-          this.taskForm = { name: '', notes: '', interval_days: 7, category_id: '', assigned_member_id: '' };
+          this.taskForm = { name: '', notes: '', interval_days: DEFAULT_INTERVAL_DAYS, category_id: '', assigned_member_id: '' };
           this.showTaskModal = true;
         },
 
@@ -973,13 +980,13 @@
 
         openCategoryModal() {
           this.editingCategoryId = null;
-          this.categoryForm = { name: '', color: '#6b7280' };
+          this.categoryForm = { name: '', color: DEFAULT_CATEGORY_COLOR };
           this.showCategoryModal = true;
         },
 
         editCategory(cat) {
           this.editingCategoryId = cat.id;
-          this.categoryForm = { name: cat.name, color: cat.color || '#6b7280' };
+          this.categoryForm = { name: cat.name, color: cat.color || DEFAULT_CATEGORY_COLOR };
           this.showCategoryModal = true;
         },
 
