@@ -38,7 +38,7 @@
       </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 py-8">
+    <main class="max-w-6xl mx-auto px-4 py-4">
       <!-- Auth Page -->
       <template x-if="!user">
         <div class="max-w-md mx-auto mt-12">
@@ -80,50 +80,60 @@
 
       <!-- Dashboard -->
       <template x-if="user && currentPage === 'dashboard'">
-        <div class="space-y-6">
+        <div class="space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold text-slate-900">Dashboard</h2>
-            <button @click="openTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
+            <h2 class="text-xl font-bold text-slate-900">Dashboard</h2>
+            <button @click="openTaskModal()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
               New Task
             </button>
           </div>
 
           <!-- Stats -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-white rounded-xl shadow-sm border p-4">
-              <div class="text-sm text-slate-500 mb-1">Overdue</div>
-              <div class="text-3xl font-bold text-red-600" x-text="tasks.filter(t => t.status === 'overdue').length"></div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border p-4">
-              <div class="text-sm text-slate-500 mb-1">Due Today</div>
-              <div class="text-3xl font-bold text-yellow-600" x-text="tasks.filter(t => t.status === 'pending').length"></div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border p-4">
-              <div class="text-sm text-slate-500 mb-1">Done</div>
-              <div class="text-3xl font-bold text-green-600" x-text="tasks.filter(t => t.status === 'done').length"></div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm border p-4">
-              <div class="text-sm text-slate-500 mb-1">Total</div>
-              <div class="text-3xl font-bold text-slate-900" x-text="tasks.length"></div>
-            </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <button @click="filterStatus = filterStatus === 'overdue' ? 'all' : 'overdue'"
+              class="rounded-lg shadow-sm border px-3 py-2 text-left transition-colors"
+              :class="filterStatus === 'overdue' ? 'bg-red-50 border-l-4 border-l-red-500' : 'bg-white hover:bg-slate-50'">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-600">Overdue</span>
+                <span class="text-2xl font-bold text-red-600" x-text="tasks.filter(t => t.status === 'overdue').length"></span>
+              </div>
+            </button>
+            <button @click="filterStatus = filterStatus === 'pending' ? 'all' : 'pending'"
+              class="rounded-lg shadow-sm border px-3 py-2 text-left transition-colors"
+              :class="filterStatus === 'pending' ? 'bg-yellow-50 border-l-4 border-l-yellow-500' : 'bg-white hover:bg-slate-50'">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-600">Due Today</span>
+                <span class="text-2xl font-bold text-yellow-600" x-text="tasks.filter(t => t.status === 'pending').length"></span>
+              </div>
+            </button>
+            <button @click="filterStatus = filterStatus === 'done' ? 'all' : 'done'"
+              class="rounded-lg shadow-sm border px-3 py-2 text-left transition-colors"
+              :class="filterStatus === 'done' ? 'bg-green-50 border-l-4 border-l-green-500' : 'bg-white hover:bg-slate-50'">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-600">Done</span>
+                <span class="text-2xl font-bold text-green-600" x-text="tasks.filter(t => t.status === 'done').length"></span>
+              </div>
+            </button>
+            <button @click="filterStatus = 'all'"
+              class="rounded-lg shadow-sm border px-3 py-2 text-left transition-colors"
+              :class="filterStatus === 'all' ? 'bg-blue-100 border-l-4' : 'bg-white hover:bg-slate-50'">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-600">Total</span>
+                <span class="text-2xl font-bold text-slate-900" x-text="tasks.length"></span>
+              </div>
+            </button>
           </div>
 
           <!-- Filters -->
-          <div class="flex flex-wrap gap-4">
-            <select x-model="filterStatus" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
-              <option value="all">All Statuses</option>
-              <option value="overdue">Overdue</option>
-              <option value="pending">Due Today</option>
-              <option value="done">Done</option>
-            </select>
-            <select x-model="filterCategory" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+          <div class="flex flex-wrap gap-2">
+            <select x-model="filterCategory" class="px-2 py-1.5 text-sm border border-slate-300 rounded-lg bg-white">
               <option value="all">All Categories</option>
               <template x-for="cat in uniqueCategories" :key="cat">
                 <option :value="cat" x-text="cat"></option>
               </template>
             </select>
-            <select x-model="filterMember" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+            <select x-model="filterMember" class="px-2 py-1.5 text-sm border border-slate-300 rounded-lg bg-white">
               <option value="all">All Members</option>
               <option value="unassigned">Unassigned</option>
               <template x-for="member in members" :key="member.id">
@@ -133,9 +143,9 @@
           </div>
 
           <!-- Task List -->
-          <div class="space-y-3" x-show="filteredTasks.length > 0">
+          <div class="space-y-2" x-show="filteredTasks.length > 0">
             <template x-for="task in filteredTasks" :key="task.id">
-              <div class="bg-white rounded-xl shadow-sm border p-4 flex flex-col md:flex-row md:items-center gap-4"
+              <div class="bg-white rounded-lg shadow-sm border p-3 flex flex-col md:flex-row md:items-center gap-3"
                 :class="{
                   'border-l-4 border-l-green-500': task.status === 'done',
                   'border-l-4 border-l-yellow-500': task.status === 'pending',
@@ -202,9 +212,9 @@
             </template>
           </div>
 
-          <div x-show="filteredTasks.length === 0" class="bg-white rounded-xl shadow-sm border p-12 text-center">
-            <div class="text-4xl mb-4">📋</div>
-            <h3 class="text-lg font-semibold text-slate-900 mb-2">No tasks found</h3>
+          <div x-show="filteredTasks.length === 0" class="bg-white rounded-lg shadow-sm border p-8 text-center">
+            <div class="text-3xl mb-3">📋</div>
+            <h3 class="text-base font-semibold text-slate-900 mb-1">No tasks found</h3>
             <p class="text-slate-500" x-text="tasks.length === 0 ? 'Get started by creating your first task' : 'No tasks match your current filters'"></p>
           </div>
         </div>
