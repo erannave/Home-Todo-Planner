@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("chores.db", { create: true });
+const db = new Database("data/chores.db", { create: true });
 
 // Initialize tables
 db.exec(`
