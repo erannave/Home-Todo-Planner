@@ -325,16 +325,15 @@ function app() {
     },
 
     getStatusText(task) {
-      // Non-recurring task status text
+      // Non-recurring tasks
       if (!task.is_recurring) {
-        if (task.status === "pending") {
-          return task.due_date
-            ? `Due: ${this.formatDate(task.due_date)}`
-            : "Pending";
-        }
-        return "Overdue";
+        if (task.status === "overdue") return "Overdue";
+        return task.due_date
+          ? `Due: ${this.formatDate(task.due_date)}`
+          : "Pending";
       }
-      // Recurring task status text
+
+      // Recurring tasks
       if (task.status === "done")
         return `Done - Next: ${this.formatDate(task.next_due)}`;
       if (task.status === "pending") return "Due Today";
@@ -342,34 +341,23 @@ function app() {
     },
 
     getStatusForDay(task, daysFromToday) {
+      const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const targetDate = new Date(today);
       targetDate.setDate(targetDate.getDate() + daysFromToday);
 
-      // Non-recurring tasks
-      if (!task.is_recurring) {
-        // Non-recurring without due date: always overdue
-        if (!task.due_date) return "overdue";
+      // Non-recurring tasks without due date are always overdue
+      if (!task.is_recurring && !task.due_date) return "overdue";
 
-        // Non-recurring with due date: check against due date
-        const dueDate = new Date(task.due_date);
-        dueDate.setHours(0, 0, 0, 0);
-        const daysUntilDue = Math.ceil(
-          (dueDate - targetDate) / (1000 * 60 * 60 * 24),
-        );
-        if (daysUntilDue > 0) return "done";
-        if (daysUntilDue === 0) return "pending";
-        return "overdue";
-      }
-
-      // Recurring tasks: use next_due
-      const nextDue = new Date(task.next_due);
-      nextDue.setHours(0, 0, 0, 0);
-
-      const daysUntilDue = Math.ceil(
-        (nextDue - targetDate) / (1000 * 60 * 60 * 24),
+      // Determine reference date (due_date for non-recurring, next_due for recurring)
+      const referenceDate = new Date(
+        task.is_recurring ? task.next_due : task.due_date,
       );
+      referenceDate.setHours(0, 0, 0, 0);
+
+      const daysUntilDue = Math.ceil((referenceDate - targetDate) / MS_PER_DAY);
 
       if (daysUntilDue > 0) return "done";
       if (daysUntilDue === 0) return "pending";
@@ -379,8 +367,8 @@ function app() {
     get8DayPreview(task) {
       const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
       const today = new Date();
-      // Show 8 days (today + 7 days) to cover full weekly cycle
-      return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+
+      return Array.from({ length: 8 }, (_, i) => {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
         return {
@@ -411,18 +399,18 @@ function app() {
     },
 
     formatRelativeTime(dateStr) {
+      const pluralize = (n, unit) => `${n} ${unit}${n !== 1 ? "s" : ""} ago`;
+
       const date = new Date(dateStr);
-      const now = new Date();
-      const diffMs = now - date;
+      const diffMs = Date.now() - date;
       const diffMins = Math.floor(diffMs / (1000 * 60));
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
       if (diffMins < 1) return "Just now";
-      if (diffMins < 60)
-        return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
-      if (diffHours < 24)
-        return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+      if (diffMins < 60) return pluralize(diffMins, "minute");
+      if (diffHours < 24) return pluralize(diffHours, "hour");
+      if (diffDays < 7) return pluralize(diffDays, "day");
       return date.toLocaleDateString();
     },
 
