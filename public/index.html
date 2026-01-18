@@ -751,11 +751,17 @@
           if (this.customCompletionDate) {
             body.completed_at = this.customCompletionDate;
           }
-          await fetch(`/api/tasks/${id}/complete`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
+          try {
+            const res = await fetch(`/api/tasks/${id}/complete`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error('Failed to complete task');
+            this.showToast('Task marked as done!');
+          } catch (error) {
+            this.showToast('Failed to complete task', 'error');
+          }
           this.completingTaskId = null;
           this.selectedMemberId = '';
           this.customCompletionDate = '';
@@ -789,26 +795,32 @@
             category_id: this.taskForm.category_id || null,
             assigned_member_id: this.taskForm.assigned_member_id || null
           };
-          if (this.editingTaskId) {
-            await fetch(`/api/tasks/${this.editingTaskId}`, {
-              method: 'PUT',
+          try {
+            const url = this.editingTaskId ? `/api/tasks/${this.editingTaskId}` : '/api/tasks';
+            const method = this.editingTaskId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+              method,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(data)
             });
-          } else {
-            await fetch('/api/tasks', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(data)
-            });
+            if (!res.ok) throw new Error('Failed to save task');
+            this.showToast(this.editingTaskId ? 'Task updated!' : 'Task created!');
+            this.showTaskModal = false;
+          } catch (error) {
+            this.showToast('Failed to save task', 'error');
           }
-          this.showTaskModal = false;
           await this.loadData();
         },
 
         async deleteTask(id) {
           if (!confirm('Are you sure you want to delete this task?')) return;
-          await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+          try {
+            const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete task');
+            this.showToast('Task deleted');
+          } catch (error) {
+            this.showToast('Failed to delete task', 'error');
+          }
           await this.loadData();
         },
 
@@ -825,26 +837,32 @@
         },
 
         async saveCategory() {
-          if (this.editingCategoryId) {
-            await fetch(`/api/categories/${this.editingCategoryId}`, {
-              method: 'PUT',
+          try {
+            const url = this.editingCategoryId ? `/api/categories/${this.editingCategoryId}` : '/api/categories';
+            const method = this.editingCategoryId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+              method,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(this.categoryForm)
             });
-          } else {
-            await fetch('/api/categories', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(this.categoryForm)
-            });
+            if (!res.ok) throw new Error('Failed to save category');
+            this.showToast(this.editingCategoryId ? 'Category updated!' : 'Category created!');
+            this.showCategoryModal = false;
+          } catch (error) {
+            this.showToast('Failed to save category', 'error');
           }
-          this.showCategoryModal = false;
           await this.loadData();
         },
 
         async deleteCategory(id) {
           if (!confirm('Are you sure you want to delete this category?')) return;
-          await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+          try {
+            const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete category');
+            this.showToast('Category deleted');
+          } catch (error) {
+            this.showToast('Failed to delete category', 'error');
+          }
           await this.loadData();
         },
 
@@ -861,38 +879,56 @@
         },
 
         async saveMember() {
-          if (this.editingMemberId) {
-            await fetch(`/api/members/${this.editingMemberId}`, {
-              method: 'PUT',
+          try {
+            const url = this.editingMemberId ? `/api/members/${this.editingMemberId}` : '/api/members';
+            const method = this.editingMemberId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+              method,
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(this.memberForm)
             });
-          } else {
-            await fetch('/api/members', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(this.memberForm)
-            });
+            if (!res.ok) throw new Error('Failed to save member');
+            this.showToast(this.editingMemberId ? 'Member updated!' : 'Member added!');
+            this.showMemberModal = false;
+          } catch (error) {
+            this.showToast('Failed to save member', 'error');
           }
-          this.showMemberModal = false;
           await this.loadData();
         },
 
         async deleteMember(id) {
           if (!confirm('Are you sure you want to remove this member?')) return;
-          await fetch(`/api/members/${id}`, { method: 'DELETE' });
+          try {
+            const res = await fetch(`/api/members/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to remove member');
+            this.showToast('Member removed');
+          } catch (error) {
+            this.showToast('Failed to remove member', 'error');
+          }
           await this.loadData();
         },
 
         async deleteHistoryItem(id) {
           if (!confirm('Are you sure you want to delete this history entry?')) return;
-          await fetch(`/api/history/${id}`, { method: 'DELETE' });
+          try {
+            const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete history entry');
+            this.showToast('History entry deleted');
+          } catch (error) {
+            this.showToast('Failed to delete history entry', 'error');
+          }
           await this.loadData();
         },
 
         async clearHistory() {
           if (!confirm('Are you sure you want to clear all history? This cannot be undone.')) return;
-          await fetch('/api/history', { method: 'DELETE' });
+          try {
+            const res = await fetch('/api/history', { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to clear history');
+            this.showToast('History cleared');
+          } catch (error) {
+            this.showToast('Failed to clear history', 'error');
+          }
           await this.loadData();
         }
       }
