@@ -41,3 +41,6 @@ public/alpine.js
 
 # Bun
 bun.lock
+
+#Playwright
+.playwright-mcp
