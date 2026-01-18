@@ -297,6 +297,61 @@ app.get("/api/history", async (c) => {
   return c.json(history);
 });
 
+app.delete("/api/history/:id", async (c) => {
+  const userId = getUserIdFromSession(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = Number(c.req.param("id"));
+
+  // Verify the completion belongs to a task owned by this user
+  const completion = db
+    .query<{ id: number; task_id: number }, [number, number]>(
+      `SELECT tc.id, tc.task_id FROM task_completions tc
+       JOIN tasks t ON tc.task_id = t.id
+       WHERE tc.id = ? AND t.user_id = ?`
+    )
+    .get(id, userId);
+
+  if (!completion) {
+    return c.json({ error: "History entry not found" }, 404);
+  }
+
+  db.run("DELETE FROM task_completions WHERE id = ?", [id]);
+
+  // Update the task's last_completed_at to the previous completion, if any
+  const previousCompletion = db
+    .query<{ completed_at: string }, [number]>(
+      `SELECT completed_at FROM task_completions
+       WHERE task_id = ? ORDER BY completed_at DESC LIMIT 1`
+    )
+    .get(completion.task_id);
+
+  db.run("UPDATE tasks SET last_completed_at = ? WHERE id = ?", [
+    previousCompletion?.completed_at || null,
+    completion.task_id,
+  ]);
+
+  return c.json({ success: true });
+});
+
+app.delete("/api/history", async (c) => {
+  const userId = getUserIdFromSession(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  // Delete all completions for tasks owned by this user
+  db.run(
+    `DELETE FROM task_completions WHERE task_id IN (
+      SELECT id FROM tasks WHERE user_id = ?
+    )`,
+    [userId]
+  );
+
+  // Reset last_completed_at for all user's tasks
+  db.run("UPDATE tasks SET last_completed_at = NULL WHERE user_id = ?", [userId]);
+
+  return c.json({ success: true });
+});
+
 // Members routes
 app.get("/api/members", async (c) => {
   const userId = getUserIdFromSession(c);
