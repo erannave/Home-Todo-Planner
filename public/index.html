@@ -96,7 +96,7 @@
               :class="filterStatus === 'overdue' ? 'bg-red-50 border-l-4 border-l-red-500' : 'bg-white hover:bg-slate-50'">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-slate-600">Overdue</span>
-                <span class="text-2xl font-bold text-red-600" x-text="tasks.filter(t => t.status === 'overdue').length"></span>
+                <span class="text-2xl font-bold text-red-600" x-text="taskStats.overdue"></span>
               </div>
             </button>
             <button @click="filterStatus = filterStatus === 'pending' ? 'all' : 'pending'"
@@ -104,7 +104,7 @@
               :class="filterStatus === 'pending' ? 'bg-yellow-50 border-l-4 border-l-yellow-500' : 'bg-white hover:bg-slate-50'">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-slate-600">Due Today</span>
-                <span class="text-2xl font-bold text-yellow-600" x-text="tasks.filter(t => t.status === 'pending').length"></span>
+                <span class="text-2xl font-bold text-yellow-600" x-text="taskStats.pending"></span>
               </div>
             </button>
             <button @click="filterStatus = filterStatus === 'done' ? 'all' : 'done'"
@@ -112,7 +112,7 @@
               :class="filterStatus === 'done' ? 'bg-green-50 border-l-4 border-l-green-500' : 'bg-white hover:bg-slate-50'">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-slate-600">Done</span>
-                <span class="text-2xl font-bold text-green-600" x-text="tasks.filter(t => t.status === 'done').length"></span>
+                <span class="text-2xl font-bold text-green-600" x-text="taskStats.done"></span>
               </div>
             </button>
             <button @click="filterStatus = 'all'"
@@ -120,7 +120,7 @@
               :class="filterStatus === 'all' ? 'bg-blue-100 border-l-4' : 'bg-white hover:bg-slate-50'">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-slate-600">Total</span>
-                <span class="text-2xl font-bold text-slate-900" x-text="tasks.length"></span>
+                <span class="text-2xl font-bold text-slate-900" x-text="taskStats.total"></span>
               </div>
             </button>
           </div>
@@ -658,6 +658,16 @@
 
         get uniqueCategories() {
           return [...new Set(this.tasks.filter(t => t.category_name).map(t => t.category_name))].sort();
+        },
+
+        get taskStats() {
+          const stats = { overdue: 0, pending: 0, done: 0, total: this.tasks.length };
+          for (const task of this.tasks) {
+            if (task.status === 'overdue') stats.overdue++;
+            else if (task.status === 'pending') stats.pending++;
+            else if (task.status === 'done') stats.done++;
+          }
+          return stats;
         },
 
         get filteredTasks() {
