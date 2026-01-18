@@ -6,7 +6,9 @@
       "!**/node_modules",
       "!**/dist",
       "!**/.output",
-      "!**/src/routeTree.gen.ts"
+      "!**/src/routeTree.gen.ts",
+      "!**/public/alpine.js",
+      "!**/public/styles.css"
     ]
   },
   "css": {
@@ -22,7 +24,10 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "complexity": {
+        "noImportantStyles": "off"
+      }
     }
   }
 }

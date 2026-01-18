@@ -16,6 +16,7 @@ const PRESET_COLORS = [
 const TOAST_DURATION_MS = 3000;
 const ERROR_DURATION_MS = 5000;
 
+// biome-ignore lint/correctness/noUnusedVariables: Used by Alpine.js via x-data="app()" in HTML
 function app() {
   return {
     user: null,
@@ -64,12 +65,16 @@ function app() {
 
     showToast(message, type = "success") {
       this.toast = { show: true, message, type };
-      setTimeout(() => (this.toast.show = false), TOAST_DURATION_MS);
+      setTimeout(() => {
+        this.toast.show = false;
+      }, TOAST_DURATION_MS);
     },
 
     showError(msg) {
       this.errorMessage = msg;
-      setTimeout(() => (this.errorMessage = ""), ERROR_DURATION_MS);
+      setTimeout(() => {
+        this.errorMessage = "";
+      }, ERROR_DURATION_MS);
     },
 
     loadPreferences() {
@@ -151,7 +156,7 @@ function app() {
         this.categories = await categoriesRes.json();
         this.members = await membersRes.json();
         this.history = await historyRes.json();
-      } catch (error) {
+      } catch {
         this.showError("Failed to load data. Please refresh the page.");
       } finally {
         this.loading = false;
@@ -196,7 +201,7 @@ function app() {
           this.authConfirmPassword = "";
           await this.loadData();
         }
-      } catch (error) {
+      } catch {
         this.authError = "Registration failed. Please try again.";
       }
     },
@@ -232,7 +237,7 @@ function app() {
           this.authPassword = "";
           await this.loadData();
         }
-      } catch (error) {
+      } catch {
         this.authError = "Login failed. Please try again.";
       }
     },
@@ -284,7 +289,7 @@ function app() {
           filtered = filtered.filter((t) => !t.assigned_member_id);
         } else {
           filtered = filtered.filter(
-            (t) => t.assigned_member_id === parseInt(this.filterMember),
+            (t) => t.assigned_member_id === parseInt(this.filterMember, 10),
           );
         }
       }
@@ -324,16 +329,16 @@ function app() {
       if (!task.is_recurring) {
         if (task.status === "pending") {
           return task.due_date
-            ? "Due: " + this.formatDate(task.due_date)
+            ? `Due: ${this.formatDate(task.due_date)}`
             : "Pending";
         }
         return "Overdue";
       }
       // Recurring task status text
       if (task.status === "done")
-        return "Done - Next: " + this.formatDate(task.next_due);
+        return `Done - Next: ${this.formatDate(task.next_due)}`;
       if (task.status === "pending") return "Due Today";
-      return "Overdue - " + this.formatDate(task.next_due);
+      return `Overdue - ${this.formatDate(task.next_due)}`;
     },
 
     getStatusForDay(task, daysFromToday) {
@@ -382,8 +387,8 @@ function app() {
       if (diffDays === 0) return "Today";
       if (diffDays === 1) return "Tomorrow";
       if (diffDays === -1) return "Yesterday";
-      if (diffDays < -1) return Math.abs(diffDays) + " days ago";
-      if (diffDays < 7) return "In " + diffDays + " days";
+      if (diffDays < -1) return `${Math.abs(diffDays)} days ago`;
+      if (diffDays < 7) return `In ${diffDays} days`;
       return date.toLocaleDateString();
     },
 
@@ -396,11 +401,10 @@ function app() {
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       if (diffMins < 1) return "Just now";
       if (diffMins < 60)
-        return diffMins + " minute" + (diffMins > 1 ? "s" : "") + " ago";
+        return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
       if (diffHours < 24)
-        return diffHours + " hour" + (diffHours > 1 ? "s" : "") + " ago";
-      if (diffDays < 7)
-        return diffDays + " day" + (diffDays > 1 ? "s" : "") + " ago";
+        return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+      if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
       return date.toLocaleDateString();
     },
 
@@ -417,7 +421,7 @@ function app() {
         });
         if (!res.ok) throw new Error("Failed to complete task");
         this.showToast("Task marked as done!");
-      } catch (error) {
+      } catch {
         this.showToast("Failed to complete task", "error");
       }
       this.completingTaskId = null;
@@ -482,7 +486,7 @@ function app() {
         if (!res.ok) throw new Error("Failed to save task");
         this.showToast(this.editingTaskId ? "Task updated!" : "Task created!");
         this.showTaskModal = false;
-      } catch (error) {
+      } catch {
         this.showToast("Failed to save task", "error");
       }
       await this.loadData();
@@ -494,7 +498,7 @@ function app() {
         const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete task");
         this.showToast("Task deleted");
-      } catch (error) {
+      } catch {
         this.showToast("Failed to delete task", "error");
       }
       await this.loadData();
@@ -531,7 +535,7 @@ function app() {
           this.editingCategoryId ? "Category updated!" : "Category created!",
         );
         this.showCategoryModal = false;
-      } catch (error) {
+      } catch {
         this.showToast("Failed to save category", "error");
       }
       await this.loadData();
@@ -543,7 +547,7 @@ function app() {
         const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete category");
         this.showToast("Category deleted");
-      } catch (error) {
+      } catch {
         this.showToast("Failed to delete category", "error");
       }
       await this.loadData();
@@ -577,7 +581,7 @@ function app() {
           this.editingMemberId ? "Member updated!" : "Member added!",
         );
         this.showMemberModal = false;
-      } catch (error) {
+      } catch {
         this.showToast("Failed to save member", "error");
       }
       await this.loadData();
@@ -589,7 +593,7 @@ function app() {
         const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to remove member");
         this.showToast("Member removed");
-      } catch (error) {
+      } catch {
         this.showToast("Failed to remove member", "error");
       }
       await this.loadData();
@@ -602,7 +606,7 @@ function app() {
         const res = await fetch(`/api/history/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete history entry");
         this.showToast("History entry deleted");
-      } catch (error) {
+      } catch {
         this.showToast("Failed to delete history entry", "error");
       }
       await this.loadData();
@@ -619,7 +623,7 @@ function app() {
         const res = await fetch("/api/history", { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to clear history");
         this.showToast("History cleared");
-      } catch (error) {
+      } catch {
         this.showToast("Failed to clear history", "error");
       }
       await this.loadData();

@@ -73,7 +73,7 @@ const existingUser = db
 if (!existingUser) {
   const result = db.run(
     "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-    ["demo@example.com", passwordHash]
+    ["demo@example.com", passwordHash],
   );
   const userId = Number(result.lastInsertRowid);
 
@@ -114,13 +114,18 @@ if (!existingUser) {
   ]);
 
   // Get IDs for tasks
-  const members = db.query("SELECT id FROM household_members WHERE user_id = ?").all(userId) as { id: number }[];
-  const categories = db.query("SELECT id, name FROM categories WHERE user_id = ?").all(userId) as { id: number; name: string }[];
+  const members = db
+    .query("SELECT id FROM household_members WHERE user_id = ?")
+    .all(userId) as { id: number }[];
+  const categories = db
+    .query("SELECT id, name FROM categories WHERE user_id = ?")
+    .all(userId) as { id: number; name: string }[];
 
-  const kitchenId = categories.find((c) => c.name === "Kitchen")?.id;
-  const bathroomId = categories.find((c) => c.name === "Bathroom")?.id;
-  const livingRoomId = categories.find((c) => c.name === "Living Room")?.id;
-  const gardenId = categories.find((c) => c.name === "Garden")?.id;
+  const kitchenId = categories.find((c) => c.name === "Kitchen")?.id ?? null;
+  const bathroomId = categories.find((c) => c.name === "Bathroom")?.id ?? null;
+  const livingRoomId =
+    categories.find((c) => c.name === "Living Room")?.id ?? null;
+  const gardenId = categories.find((c) => c.name === "Garden")?.id ?? null;
 
   // Add some tasks
   const now = new Date();
@@ -134,27 +139,54 @@ if (!existingUser) {
   // Recurring tasks
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    [userId, "Clean kitchen counters", "Wipe down all surfaces", 1, 1, kitchenId, members[0].id, yesterday.toISOString()]
+    [
+      userId,
+      "Clean kitchen counters",
+      "Wipe down all surfaces",
+      1,
+      1,
+      kitchenId,
+      members[0].id,
+      yesterday.toISOString(),
+    ],
   );
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    [userId, "Vacuum living room", null, 3, 1, livingRoomId, null, threeDaysAgo.toISOString()]
+    [
+      userId,
+      "Vacuum living room",
+      null,
+      3,
+      1,
+      livingRoomId,
+      null,
+      threeDaysAgo.toISOString(),
+    ],
   );
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    [userId, "Clean bathroom", "Toilet, sink, and shower", 7, 1, bathroomId, members[1].id, weekAgo.toISOString()]
+    [
+      userId,
+      "Clean bathroom",
+      "Toilet, sink, and shower",
+      7,
+      1,
+      bathroomId,
+      members[1].id,
+      weekAgo.toISOString(),
+    ],
   );
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [userId, "Mow the lawn", null, 14, 1, gardenId, members[2].id]
+    [userId, "Mow the lawn", null, 14, 1, gardenId, members[2].id],
   );
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id) VALUES (?, ?, ?, ?, ?, ?)",
-    [userId, "Take out trash", null, 2, 1, kitchenId]
+    [userId, "Take out trash", null, 2, 1, kitchenId],
   );
 
   // Non-recurring tasks (one-time)
@@ -167,22 +199,48 @@ if (!existingUser) {
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    [userId, "Call plumber about leak", "Kitchen sink dripping", null, 0, tomorrow.toISOString().split('T')[0], kitchenId, null]
+    [
+      userId,
+      "Call plumber about leak",
+      "Kitchen sink dripping",
+      null,
+      0,
+      tomorrow.toISOString().split("T")[0],
+      kitchenId,
+      null,
+    ],
   );
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [userId, "Schedule annual HVAC maintenance", null, null, 0, nextWeek.toISOString().split('T')[0], null]
+    [
+      userId,
+      "Schedule annual HVAC maintenance",
+      null,
+      null,
+      0,
+      nextWeek.toISOString().split("T")[0],
+      null,
+    ],
   );
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    [userId, "Fix squeaky door hinge", "Master bedroom door", null, 0, twoDaysAgo.toISOString().split('T')[0], livingRoomId, members[1].id]
+    [
+      userId,
+      "Fix squeaky door hinge",
+      "Master bedroom door",
+      null,
+      0,
+      twoDaysAgo.toISOString().split("T")[0],
+      livingRoomId,
+      members[1].id,
+    ],
   );
 
   db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id) VALUES (?, ?, ?, ?, ?, ?)",
-    [userId, "Organize garage shelves", "No rush", null, 0, null]
+    [userId, "Organize garage shelves", "No rush", null, 0, null],
   );
 
   console.log("Database seeded successfully!");
