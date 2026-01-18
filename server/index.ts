@@ -163,14 +163,14 @@ app.get("/api/tasks", async (c) => {
   const tasks = db
     .query<any, [number]>(
       `SELECT
-        t.id, t.name, t.notes, t.interval_days,
+        t.id, t.name, t.notes, t.interval_days, t.is_recurring, t.due_date,
         t.category_id, c.name as category_name, c.color as category_color,
         t.assigned_member_id, m.name as assigned_member_name,
         t.last_completed_at, t.created_at
       FROM tasks t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN household_members m ON t.assigned_member_id = m.id
-      WHERE t.user_id = ?
+      WHERE t.user_id = ? AND (t.is_recurring = 1 OR t.last_completed_at IS NULL)
       ORDER BY t.name`
     )
     .all(userId);
@@ -183,6 +183,25 @@ app.get("/api/tasks", async (c) => {
     let status: "done" | "pending" | "overdue";
     let nextDue: Date;
 
+    // Non-recurring task status logic
+    if (!task.is_recurring) {
+      if (!task.due_date) {
+        status = "pending";
+        nextDue = today;
+      } else {
+        const dueDate = new Date(task.due_date);
+        const dueDateDay = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        nextDue = dueDateDay;
+        if (dueDateDay >= today) {
+          status = "pending";
+        } else {
+          status = "overdue";
+        }
+      }
+      return { ...task, status, next_due: nextDue.toISOString() };
+    }
+
+    // Recurring task status logic
     if (!task.last_completed_at) {
       status = "overdue";
       nextDue = today;
@@ -216,17 +235,22 @@ app.post("/api/tasks", async (c) => {
   const userId = getUserIdFromSession(c);
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
-  const { name, notes, interval_days, category_id, assigned_member_id } =
+  const { name, notes, interval_days, category_id, assigned_member_id, is_recurring = true, due_date } =
     await c.req.json();
 
-  if (!name || !interval_days) {
-    return c.json({ error: "Name and interval are required" }, 400);
+  if (!name) {
+    return c.json({ error: "Name is required" }, 400);
+  }
+
+  // Validate: recurring tasks require interval_days
+  if (is_recurring && !interval_days) {
+    return c.json({ error: "Interval is required for recurring tasks" }, 400);
   }
 
   const result = db.run(
-    `INSERT INTO tasks (user_id, name, notes, interval_days, category_id, assigned_member_id)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [userId, name, notes || null, interval_days, category_id || null, assigned_member_id || null]
+    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [userId, name, notes || null, is_recurring ? interval_days : null, is_recurring ? 1 : 0, is_recurring ? null : (due_date || null), category_id || null, assigned_member_id || null]
   );
 
   return c.json({ id: Number(result.lastInsertRowid) });
@@ -237,14 +261,19 @@ app.put("/api/tasks/:id", async (c) => {
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = Number(c.req.param("id"));
-  const { name, notes, interval_days, category_id, assigned_member_id } =
+  const { name, notes, interval_days, category_id, assigned_member_id, is_recurring = true, due_date } =
     await c.req.json();
+
+  // Validate: recurring tasks require interval_days
+  if (is_recurring && !interval_days) {
+    return c.json({ error: "Interval is required for recurring tasks" }, 400);
+  }
 
   db.run(
     `UPDATE tasks
-     SET name = ?, notes = ?, interval_days = ?, category_id = ?, assigned_member_id = ?
+     SET name = ?, notes = ?, interval_days = ?, is_recurring = ?, due_date = ?, category_id = ?, assigned_member_id = ?
      WHERE id = ? AND user_id = ?`,
-    [name, notes || null, interval_days, category_id || null, assigned_member_id || null, id, userId]
+    [name, notes || null, is_recurring ? interval_days : null, is_recurring ? 1 : 0, is_recurring ? null : (due_date || null), category_id || null, assigned_member_id || null, id, userId]
   );
 
   return c.json({ success: true });
@@ -300,7 +329,7 @@ app.get("/api/history", async (c) => {
   const history = db
     .query<any, [number]>(
       `SELECT
-        tc.id, tc.task_id, t.name as task_name,
+        tc.id, tc.task_id, t.name as task_name, t.is_recurring,
         m.name as completed_by_name, tc.completed_at, tc.notes
       FROM task_completions tc
       JOIN tasks t ON tc.task_id = t.id
