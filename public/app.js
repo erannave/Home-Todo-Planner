@@ -301,7 +301,7 @@ function app() {
 
     get groupedTasks() {
       const tasks = this.filteredTasks;
-      if (!this.groupByCategory) return null;
+      if (!this.groupByCategory) return [];
 
       const groups = new Map();
       for (const task of tasks) {
@@ -347,6 +347,23 @@ function app() {
       const targetDate = new Date(today);
       targetDate.setDate(targetDate.getDate() + daysFromToday);
 
+      // Non-recurring tasks
+      if (!task.is_recurring) {
+        // Non-recurring without due date: always overdue
+        if (!task.due_date) return "overdue";
+
+        // Non-recurring with due date: check against due date
+        const dueDate = new Date(task.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        const daysUntilDue = Math.ceil(
+          (dueDate - targetDate) / (1000 * 60 * 60 * 24),
+        );
+        if (daysUntilDue > 0) return "done";
+        if (daysUntilDue === 0) return "pending";
+        return "overdue";
+      }
+
+      // Recurring tasks: use next_due
       const nextDue = new Date(task.next_due);
       nextDue.setHours(0, 0, 0, 0);
 
@@ -359,10 +376,11 @@ function app() {
       return "overdue";
     },
 
-    get7DayPreview(task) {
+    get8DayPreview(task) {
       const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
       const today = new Date();
-      return [0, 1, 2, 3, 4, 5, 6].map((i) => {
+      // Show 8 days (today + 7 days) to cover full weekly cycle
+      return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
         return {

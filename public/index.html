@@ -212,9 +212,9 @@
                         </div>
                         <div x-show="task.notes" class="mt-2 pl-3 border-l-2 border-slate-200 text-sm text-slate-600 italic" x-text="task.notes"></div>
                       </div>
-                      <!-- 7-Day Status Preview (hidden on mobile, only for recurring tasks) -->
-                      <div x-show="task.is_recurring" class="hidden md:flex flex-1 justify-center items-center gap-0.5" title="7-day status preview">
-                        <template x-for="day in get7DayPreview(task)" :key="day.day">
+                      <!-- 8-Day Status Preview (hidden on mobile) -->
+                      <div class="hidden md:flex flex-1 justify-center items-center gap-0.5" title="8-day status preview">
+                        <template x-for="day in get8DayPreview(task)" :key="day.day">
                           <div class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold text-white/90"
                             :class="{
                               'bg-green-500': day.status === 'done',
@@ -229,7 +229,7 @@
                       <div class="flex items-center gap-2">
                         <template x-if="completingTaskId !== task.id">
                           <div class="flex items-center gap-2">
-                            <button @click="completingTaskId = task.id; showDatePicker = false; customCompletionDate = ''" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                            <button @click="completingTaskId = task.id; selectedMemberId = task.assigned_member_id ? String(task.assigned_member_id) : ''; showDatePicker = false; customCompletionDate = ''" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
                               Mark Done
                             </button>
                             <button @click="editTask(task)"
@@ -248,10 +248,10 @@
                         </template>
                         <template x-if="completingTaskId === task.id">
                           <div class="flex flex-wrap items-center gap-2">
-                            <select x-model="selectedMemberId" class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm">
+                            <select x-model="selectedMemberId" x-init="$nextTick(() => $el.value = selectedMemberId)" class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm">
                               <option value="">Who?</option>
                               <template x-for="member in members" :key="member.id">
-                                <option :value="member.id" x-text="member.name"></option>
+                                <option :value="String(member.id)" x-text="member.name"></option>
                               </template>
                             </select>
                             <button @click="showDatePicker = !showDatePicker" class="p-1.5 rounded-lg transition-colors"
@@ -316,9 +316,9 @@
                   </div>
                   <div x-show="task.notes" class="mt-2 pl-3 border-l-2 border-slate-200 text-sm text-slate-600 italic" x-text="task.notes"></div>
                 </div>
-                <!-- 7-Day Status Preview (hidden on mobile, only for recurring tasks) -->
-                <div x-show="task.is_recurring" class="hidden md:flex flex-1 justify-center items-center gap-0.5" title="7-day status preview">
-                  <template x-for="day in get7DayPreview(task)" :key="day.day">
+                <!-- 8-Day Status Preview (hidden on mobile) -->
+                <div class="hidden md:flex flex-1 justify-center items-center gap-0.5" title="8-day status preview">
+                  <template x-for="day in get8DayPreview(task)" :key="day.day">
                     <div class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold text-white/90"
                       :class="{
                         'bg-green-500': day.status === 'done',
@@ -333,7 +333,7 @@
                 <div class="flex items-center gap-2">
                   <template x-if="completingTaskId !== task.id">
                     <div class="flex items-center gap-2">
-                      <button @click="completingTaskId = task.id; showDatePicker = false; customCompletionDate = ''" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                      <button @click="completingTaskId = task.id; selectedMemberId = task.assigned_member_id ? String(task.assigned_member_id) : ''; showDatePicker = false; customCompletionDate = ''" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
                         Mark Done
                       </button>
                       <button @click="editTask(task)"
@@ -352,10 +352,10 @@
                   </template>
                   <template x-if="completingTaskId === task.id">
                     <div class="flex flex-wrap items-center gap-2">
-                      <select x-model="selectedMemberId" class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm">
+                      <select x-model="selectedMemberId" x-init="$nextTick(() => $el.value = selectedMemberId)" class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm">
                         <option value="">Who?</option>
                         <template x-for="member in members" :key="member.id">
-                          <option :value="member.id" x-text="member.name"></option>
+                          <option :value="String(member.id)" x-text="member.name"></option>
                         </template>
                       </select>
                       <button @click="showDatePicker = !showDatePicker" class="p-1.5 rounded-lg transition-colors"
