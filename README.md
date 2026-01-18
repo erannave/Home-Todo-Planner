@@ -39,6 +39,66 @@ bun run dev
 
 The app will be available at http://localhost:3000
 
+### Production Build
+
+```bash
+# Build standalone binary
+bun run build
+
+# Run the compiled server
+./dist/server
+```
+
+### Docker
+
+```bash
+# Build the image
+docker build -t home-todo-planner .
+
+# Run with bind mount (data persists on host)
+docker run -p 3000:3000 -v ./data:/app/data -e ALLOW_SIGNUPS=true home-todo-planner
+
+# Or use a named volume
+docker run -p 3000:3000 -v todo-data:/app/data -e ALLOW_SIGNUPS=true home-todo-planner
+```
+
+### Docker Compose
+
+```bash
+# Start the app
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop the app
+docker compose down
+```
+
+Example `compose.yaml`:
+
+```yaml
+services:
+  home-todo-planner:
+    container_name: home-todo-planner
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - ALLOW_SIGNUPS=true
+    restart: unless-stopped
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3000` | Server port |
+| `DATABASE_PATH` | `./data/chores.db` | SQLite database path |
+| `ALLOW_SIGNUPS` | `false` | Enable user registration |
+
 ### Demo Account
 
 If you ran the seed script:
@@ -60,8 +120,12 @@ If you ran the seed script:
 
 ## API Endpoints
 
+### System
+- `GET /api/health` - Health check endpoint
+- `GET /api/config` - Public configuration (e.g., signup status)
+
 ### Authentication
-- `POST /api/register` - Create new account
+- `POST /api/register` - Create new account (requires `ALLOW_SIGNUPS=true`)
 - `POST /api/login` - Sign in
 - `POST /api/logout` - Sign out
 - `GET /api/me` - Get current user

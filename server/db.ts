@@ -1,6 +1,7 @@
 import { Database } from "bun:sqlite";
 
-const db = new Database("chores.db", { create: true });
+const databasePath = process.env.DATABASE_PATH || "./data/chores.db";
+const db = new Database(databasePath, { create: true });
 db.exec("PRAGMA journal_mode = WAL;");
 
 // Initialize tables

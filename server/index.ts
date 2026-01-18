@@ -9,6 +9,19 @@ const app = new Hono();
 // CORS for development
 app.use("/*", cors());
 
+// Environment configuration
+const ALLOW_SIGNUPS = process.env.ALLOW_SIGNUPS?.toLowerCase() === "true";
+
+// Health check endpoint
+app.get("/api/health", (c) => {
+  return c.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Config endpoint for frontend
+app.get("/api/config", (c) => {
+  return c.json({ allowSignups: ALLOW_SIGNUPS });
+});
+
 // Session helpers
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -41,6 +54,10 @@ function getUserIdFromSession(c: any): number | null {
 
 // Auth routes
 app.post("/api/register", async (c) => {
+  if (!ALLOW_SIGNUPS) {
+    return c.json({ error: "Signups are disabled" }, 403);
+  }
+
   const { email, password } = await c.req.json();
 
   if (!email || !password || password.length < 6) {
