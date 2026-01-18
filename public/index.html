@@ -172,6 +172,20 @@
                   </div>
                   <div x-show="task.notes" class="mt-2 pl-3 border-l-2 border-slate-200 text-sm text-slate-600 italic" x-text="task.notes"></div>
                 </div>
+                <!-- 7-Day Status Preview (hidden on mobile) -->
+                <div class="hidden md:flex flex-1 justify-center items-center gap-0.5" title="7-day status preview">
+                  <template x-for="day in get7DayPreview(task)" :key="day.day">
+                    <div class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold text-white/90"
+                      :class="{
+                        'bg-green-500': day.status === 'done',
+                        'bg-yellow-400': day.status === 'pending',
+                        'bg-red-500': day.status === 'overdue',
+                        'ring-1 ring-offset-1 ring-slate-500': day.isToday
+                      }"
+                      x-text="day.weekday">
+                    </div>
+                  </template>
+                </div>
                 <div class="flex items-center gap-2">
                   <template x-if="completingTaskId !== task.id">
                     <div class="flex items-center gap-2">
@@ -596,6 +610,37 @@
           if (task.status === 'done') return 'Done - Next: ' + this.formatDate(task.next_due);
           if (task.status === 'pending') return 'Due Today';
           return 'Overdue - ' + this.formatDate(task.next_due);
+        },
+
+        getStatusForDay(task, daysFromToday) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const targetDate = new Date(today);
+          targetDate.setDate(targetDate.getDate() + daysFromToday);
+
+          const nextDue = new Date(task.next_due);
+          nextDue.setHours(0, 0, 0, 0);
+
+          const daysUntilDue = Math.ceil((nextDue - targetDate) / (1000 * 60 * 60 * 24));
+
+          if (daysUntilDue > 0) return 'done';
+          if (daysUntilDue === 0) return 'pending';
+          return 'overdue';
+        },
+
+        get7DayPreview(task) {
+          const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+          const today = new Date();
+          return [0, 1, 2, 3, 4, 5, 6].map(i => {
+            const date = new Date(today);
+            date.setDate(date.getDate() + i);
+            return {
+              day: i,
+              status: this.getStatusForDay(task, i),
+              isToday: i === 0,
+              weekday: weekdays[date.getDay()]
+            };
+          });
         },
 
         formatDate(dateStr) {
