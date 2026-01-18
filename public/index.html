@@ -414,26 +414,48 @@
     </main>
 
     <!-- Task Modal -->
-    <div x-show="showTaskModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showTaskModal = false">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+    <div x-show="showTaskModal"
+         @keydown.escape.window="showTaskModal && (showTaskModal = false)"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="task-modal-title"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+         @click="showTaskModal = false">
+      <div @click.stop
+           x-show="showTaskModal"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div class="flex items-center justify-between p-4 border-b">
-          <h3 class="text-lg font-semibold" x-text="editingTaskId ? 'Edit Task' : 'New Task'"></h3>
-          <button @click="showTaskModal = false" class="text-slate-400 hover:text-slate-600">
+          <h3 id="task-modal-title" class="text-lg font-semibold" x-text="editingTaskId ? 'Edit Task' : 'New Task'"></h3>
+          <button @click="showTaskModal = false"
+                  aria-label="Close modal"
+                  class="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
         <form @submit.prevent="saveTask()" class="p-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Task Name *</label>
-            <input type="text" x-model="taskForm.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., Vacuum the living room">
+            <label for="task-name" class="block text-sm font-medium text-slate-700 mb-1">Task Name *</label>
+            <input id="task-name" type="text" x-model="taskForm.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., Vacuum the living room">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Repeat Every (days) *</label>
-            <input type="number" x-model.number="taskForm.interval_days" required min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <label for="task-interval" class="block text-sm font-medium text-slate-700 mb-1">Repeat Every (days) *</label>
+            <input id="task-interval" type="number" x-model.number="taskForm.interval_days" required min="1" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
-            <select x-model="taskForm.category_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <label for="task-category" class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <select id="task-category" x-model="taskForm.category_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               <option value="">No category</option>
               <template x-for="cat in categories" :key="cat.id">
                 <option :value="cat.id" x-text="cat.name"></option>
@@ -441,8 +463,8 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Assign To</label>
-            <select x-model="taskForm.assigned_member_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <label for="task-assignee" class="block text-sm font-medium text-slate-700 mb-1">Assign To</label>
+            <select id="task-assignee" x-model="taskForm.assigned_member_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               <option value="">Anyone</option>
               <template x-for="member in members" :key="member.id">
                 <option :value="member.id" x-text="member.name"></option>
@@ -450,66 +472,114 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-            <textarea x-model="taskForm.notes" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional details..."></textarea>
+            <label for="task-notes" class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+            <textarea id="task-notes" x-model="taskForm.notes" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Optional details..."></textarea>
           </div>
           <div class="flex justify-end gap-2 pt-2">
-            <button type="button" @click="showTaskModal = false" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" x-text="editingTaskId ? 'Save Changes' : 'Create Task'"></button>
+            <button type="button" @click="showTaskModal = false" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" x-text="editingTaskId ? 'Save Changes' : 'Create Task'"></button>
           </div>
         </form>
       </div>
     </div>
 
     <!-- Category Modal -->
-    <div x-show="showCategoryModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showCategoryModal = false">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+    <div x-show="showCategoryModal"
+         @keydown.escape.window="showCategoryModal && (showCategoryModal = false)"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="category-modal-title"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+         @click="showCategoryModal = false">
+      <div @click.stop
+           x-show="showCategoryModal"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div class="flex items-center justify-between p-4 border-b">
-          <h3 class="text-lg font-semibold" x-text="editingCategoryId ? 'Edit Category' : 'Add Category'"></h3>
-          <button @click="showCategoryModal = false" class="text-slate-400 hover:text-slate-600">
+          <h3 id="category-modal-title" class="text-lg font-semibold" x-text="editingCategoryId ? 'Edit Category' : 'Add Category'"></h3>
+          <button @click="showCategoryModal = false"
+                  aria-label="Close modal"
+                  class="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
         <form @submit.prevent="saveCategory()" class="p-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
-            <input type="text" x-model="categoryForm.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., Kitchen, Bathroom">
+            <label for="category-name" class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+            <input id="category-name" type="text" x-model="categoryForm.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., Kitchen, Bathroom">
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Color</label>
-            <div class="flex flex-wrap gap-2 mb-2">
+            <label id="color-label" class="block text-sm font-medium text-slate-700 mb-1">Color</label>
+            <div class="flex flex-wrap gap-2 mb-2" role="radiogroup" aria-labelledby="color-label">
               <template x-for="c in presetColors" :key="c">
-                <button type="button" @click="categoryForm.color = c" class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
-                  :style="{ backgroundColor: c, borderColor: categoryForm.color === c ? '#1e293b' : 'transparent' }"></button>
+                <button type="button"
+                        @click="categoryForm.color = c"
+                        :aria-pressed="categoryForm.color === c"
+                        :aria-label="'Select color ' + c"
+                        class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        :style="{ backgroundColor: c, borderColor: categoryForm.color === c ? '#1e293b' : 'transparent' }"></button>
               </template>
             </div>
-            <input type="color" x-model="categoryForm.color" class="w-full h-10 rounded border cursor-pointer">
+            <input type="color" x-model="categoryForm.color" aria-label="Custom color picker" class="w-full h-10 rounded border cursor-pointer">
           </div>
           <div class="flex justify-end gap-2 pt-2">
-            <button type="button" @click="showCategoryModal = false" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" x-text="editingCategoryId ? 'Save Changes' : 'Create Category'"></button>
+            <button type="button" @click="showCategoryModal = false" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" x-text="editingCategoryId ? 'Save Changes' : 'Create Category'"></button>
           </div>
         </form>
       </div>
     </div>
 
     <!-- Member Modal -->
-    <div x-show="showMemberModal" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" @click.self="showMemberModal = false">
-      <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+    <div x-show="showMemberModal"
+         @keydown.escape.window="showMemberModal && (showMemberModal = false)"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="member-modal-title"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+         @click="showMemberModal = false">
+      <div @click.stop
+           x-show="showMemberModal"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 scale-95"
+           x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100 scale-100"
+           x-transition:leave-end="opacity-0 scale-95"
+           class="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div class="flex items-center justify-between p-4 border-b">
-          <h3 class="text-lg font-semibold" x-text="editingMemberId ? 'Edit Member' : 'Add Member'"></h3>
-          <button @click="showMemberModal = false" class="text-slate-400 hover:text-slate-600">
+          <h3 id="member-modal-title" class="text-lg font-semibold" x-text="editingMemberId ? 'Edit Member' : 'Add Member'"></h3>
+          <button @click="showMemberModal = false"
+                  aria-label="Close modal"
+                  class="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
         <form @submit.prevent="saveMember()" class="p-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
-            <input type="text" x-model="memberForm.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., John">
+            <label for="member-name" class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+            <input id="member-name" type="text" x-model="memberForm.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g., John">
           </div>
           <div class="flex justify-end gap-2 pt-2">
-            <button type="button" @click="showMemberModal = false" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" x-text="editingMemberId ? 'Save Changes' : 'Add Member'"></button>
+            <button type="button" @click="showMemberModal = false" class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500" x-text="editingMemberId ? 'Save Changes' : 'Add Member'"></button>
           </div>
         </form>
       </div>
