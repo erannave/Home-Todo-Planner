@@ -252,7 +252,18 @@
           <div x-show="filteredTasks.length === 0" class="bg-white rounded-lg shadow-sm border p-8 text-center">
             <div class="text-3xl mb-3">📋</div>
             <h3 class="text-base font-semibold text-slate-900 mb-1">No tasks found</h3>
-            <p class="text-slate-500" x-text="tasks.length === 0 ? 'Get started by creating your first task' : 'No tasks match your current filters'"></p>
+            <p class="text-slate-500 mb-4" x-text="tasks.length === 0 ? 'Get started by creating your first task' : 'No tasks match your current filters'"></p>
+            <template x-if="tasks.length === 0">
+              <button @click="openTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+                Create Your First Task
+              </button>
+            </template>
+            <template x-if="tasks.length > 0">
+              <button @click="filterStatus = 'all'; filterCategory = 'all'; filterMember = 'all'"
+                      class="text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1">
+                Clear All Filters
+              </button>
+            </template>
           </div>
         </div>
       </template>
