@@ -36,6 +36,8 @@ npm-debug.log*
 
 # Generated
 src/routeTree.gen.ts
+public/styles.css
+public/alpine.js
 
 # Bun
 bun.lock

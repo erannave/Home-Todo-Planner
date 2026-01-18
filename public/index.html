@@ -4,24 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Home Todo Planner</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            done: '#22c55e',
-            pending: '#eab308',
-            overdue: '#ef4444',
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    [x-cloak] { display: none !important; }
-  </style>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="/alpine.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen">
   <div x-data="app()" x-init="init()" x-cloak>
@@ -35,11 +19,6 @@
               :class="currentPage === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'"
               class="px-3 py-2 rounded-md text-sm font-medium transition-colors">
               Dashboard
-            </button>
-            <button @click="currentPage = 'tasks'"
-              :class="currentPage === 'tasks' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'"
-              class="px-3 py-2 rounded-md text-sm font-medium transition-colors">
-              Tasks
             </button>
             <button @click="currentPage = 'categories'"
               :class="currentPage === 'categories' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'"
@@ -97,7 +76,7 @@
             </form>
 
             <p class="mt-4 text-center text-sm text-slate-600">
-              <span x-text="isLogin ? 'Don\\'t have an account?' : 'Already have an account?'"></span>
+              <span x-text="isLogin ? `Don't have an account?` : `Already have an account?`"></span>
               <button @click="isLogin = !isLogin; authError = ''" class="text-blue-600 hover:underline ml-1" x-text="isLogin ? 'Sign up' : 'Sign in'"></button>
             </p>
           </div>
@@ -109,7 +88,7 @@
         <div class="space-y-6">
           <div class="flex items-center justify-between">
             <h2 class="text-2xl font-bold text-slate-900">Dashboard</h2>
-            <button @click="currentPage = 'tasks'; openTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
+            <button @click="openTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
               New Task
             </button>
@@ -149,6 +128,13 @@
                 <option :value="cat" x-text="cat"></option>
               </template>
             </select>
+            <select x-model="filterMember" class="px-3 py-2 border border-slate-300 rounded-lg bg-white">
+              <option value="all">All Members</option>
+              <option value="unassigned">Unassigned</option>
+              <template x-for="member in members" :key="member.id">
+                <option :value="member.id" x-text="member.name"></option>
+              </template>
+            </select>
           </div>
 
           <!-- Task List -->
@@ -161,7 +147,10 @@
                   'border-l-4 border-l-red-500': task.status === 'overdue'
                 }">
                 <div class="flex-1">
-                  <div class="font-semibold text-slate-900" x-text="task.name"></div>
+                  <div class="font-semibold text-slate-900">
+                    <span x-text="task.name"></span>
+                    <span x-show="task.assigned_member_name" class="font-normal text-slate-500" x-text="'(' + task.assigned_member_name + ')'"></span>
+                  </div>
                   <div class="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-500">
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
                       :class="{
@@ -174,28 +163,41 @@
                     <span x-show="task.category_name" class="text-xs px-2 py-0.5 rounded"
                       :style="{ backgroundColor: (task.category_color || '#6b7280') + '20', borderLeft: '3px solid ' + (task.category_color || '#6b7280') }"
                       x-text="task.category_name"></span>
-                    <span x-show="task.assigned_member_name" class="text-xs" x-text="task.assigned_member_name"></span>
                     <span class="text-xs">Every <span x-text="task.interval_days"></span> days</span>
                   </div>
+                  <div x-show="task.notes" class="mt-2 pl-3 border-l-2 border-slate-200 text-sm text-slate-600 italic" x-text="task.notes"></div>
                 </div>
                 <div class="flex items-center gap-2">
                   <template x-if="completingTaskId !== task.id">
-                    <button @click="completingTaskId = task.id" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                      Mark Done
-                    </button>
+                    <div class="flex items-center gap-2">
+                      <button @click="completingTaskId = task.id; showDatePicker = false; customCompletionDate = ''" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                        Mark Done
+                      </button>
+                      <button @click="editTask(task)" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" title="Edit">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                      </button>
+                      <button @click="deleteTask(task.id)" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                      </button>
+                    </div>
                   </template>
                   <template x-if="completingTaskId === task.id">
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                       <select x-model="selectedMemberId" class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm">
                         <option value="">Who?</option>
                         <template x-for="member in members" :key="member.id">
                           <option :value="member.id" x-text="member.name"></option>
                         </template>
                       </select>
+                      <button @click="showDatePicker = !showDatePicker" class="p-1.5 rounded-lg transition-colors"
+                        :class="customCompletionDate ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'" title="Set custom date">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      </button>
+                      <input x-show="showDatePicker" type="date" x-model="customCompletionDate" :max="new Date().toISOString().split('T')[0]" class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm">
                       <button @click="completeTask(task.id)" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
                         Confirm
                       </button>
-                      <button @click="completingTaskId = null; selectedMemberId = ''" class="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">
+                      <button @click="completingTaskId = null; selectedMemberId = ''; showDatePicker = false; customCompletionDate = ''" class="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors">
                         Cancel
                       </button>
                     </div>
@@ -209,82 +211,6 @@
             <div class="text-4xl mb-4">📋</div>
             <h3 class="text-lg font-semibold text-slate-900 mb-2">No tasks found</h3>
             <p class="text-slate-500" x-text="tasks.length === 0 ? 'Get started by creating your first task' : 'No tasks match your current filters'"></p>
-          </div>
-        </div>
-      </template>
-
-      <!-- Tasks Page -->
-      <template x-if="user && currentPage === 'tasks'">
-        <div class="space-y-6">
-          <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold text-slate-900">Tasks</h2>
-            <button @click="openTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-              New Task
-            </button>
-          </div>
-
-          <div x-show="tasks.length > 0" class="bg-white rounded-xl shadow-sm border overflow-hidden">
-            <table class="w-full">
-              <thead class="bg-slate-50 border-b">
-                <tr>
-                  <th class="text-left p-4 font-medium text-slate-600">Name</th>
-                  <th class="text-left p-4 font-medium text-slate-600">Interval</th>
-                  <th class="text-left p-4 font-medium text-slate-600">Category</th>
-                  <th class="text-left p-4 font-medium text-slate-600">Assigned To</th>
-                  <th class="text-left p-4 font-medium text-slate-600">Status</th>
-                  <th class="text-right p-4 font-medium text-slate-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-for="task in tasks" :key="task.id">
-                  <tr class="border-b hover:bg-slate-50">
-                    <td class="p-4">
-                      <div class="font-medium" x-text="task.name"></div>
-                      <div x-show="task.notes" class="text-sm text-slate-500 truncate max-w-xs" x-text="task.notes"></div>
-                    </td>
-                    <td class="p-4 text-slate-600">Every <span x-text="task.interval_days"></span> days</td>
-                    <td class="p-4">
-                      <span x-show="task.category_name" class="text-xs px-2 py-1 rounded"
-                        :style="{ backgroundColor: (task.category_color || '#6b7280') + '20', borderLeft: '3px solid ' + (task.category_color || '#6b7280') }"
-                        x-text="task.category_name"></span>
-                      <span x-show="!task.category_name" class="text-slate-400">-</span>
-                    </td>
-                    <td class="p-4 text-slate-600">
-                      <span x-text="task.assigned_member_name || 'Anyone'"></span>
-                    </td>
-                    <td class="p-4">
-                      <span class="px-2 py-1 rounded-full text-xs font-medium"
-                        :class="{
-                          'bg-green-50 text-green-700': task.status === 'done',
-                          'bg-yellow-50 text-yellow-700': task.status === 'pending',
-                          'bg-red-50 text-red-700': task.status === 'overdue'
-                        }"
-                        x-text="task.status"></span>
-                    </td>
-                    <td class="p-4">
-                      <div class="flex justify-end gap-2">
-                        <button @click="editTask(task)" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                        </button>
-                        <button @click="deleteTask(task.id)" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
-
-          <div x-show="tasks.length === 0" class="bg-white rounded-xl shadow-sm border p-12 text-center">
-            <div class="text-4xl mb-4">📝</div>
-            <h3 class="text-lg font-semibold text-slate-900 mb-2">No tasks yet</h3>
-            <p class="text-slate-500 mb-4">Create your first recurring task to get started.</p>
-            <button @click="openTaskModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-              Create Task
-            </button>
           </div>
         </div>
       </template>
@@ -414,7 +340,7 @@
                       <span x-text="'Completed' + (item.completed_by_name ? ' by ' + item.completed_by_name : '')"></span>
                       <span x-text="formatRelativeTime(item.completed_at)"></span>
                     </div>
-                    <div x-show="item.notes" class="mt-2 text-sm text-slate-600 italic" x-text="'\"' + item.notes + '\"'"></div>
+                    <div x-show="item.notes" class="mt-2 text-sm text-slate-600 italic" x-text="`&quot;${item.notes}&quot;`"></div>
                   </div>
                 </div>
               </div>
@@ -549,8 +475,11 @@
         history: [],
         filterStatus: 'all',
         filterCategory: 'all',
+        filterMember: 'all',
         completingTaskId: null,
         selectedMemberId: '',
+        customCompletionDate: '',
+        showDatePicker: false,
         showTaskModal: false,
         showCategoryModal: false,
         showMemberModal: false,
@@ -644,6 +573,13 @@
           if (this.filterCategory !== 'all') {
             filtered = filtered.filter(t => t.category_name === this.filterCategory);
           }
+          if (this.filterMember !== 'all') {
+            if (this.filterMember === 'unassigned') {
+              filtered = filtered.filter(t => !t.assigned_member_id);
+            } else {
+              filtered = filtered.filter(t => t.assigned_member_id === parseInt(this.filterMember));
+            }
+          }
           return filtered.sort((a, b) => {
             const order = { overdue: 0, pending: 1, done: 2 };
             return order[a.status] - order[b.status];
@@ -685,13 +621,19 @@
         },
 
         async completeTask(id) {
+          const body = { completed_by_member_id: this.selectedMemberId || null };
+          if (this.customCompletionDate) {
+            body.completed_at = this.customCompletionDate;
+          }
           await fetch(`/api/tasks/${id}/complete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ completed_by_member_id: this.selectedMemberId || null })
+            body: JSON.stringify(body)
           });
           this.completingTaskId = null;
           this.selectedMemberId = '';
+          this.customCompletionDate = '';
+          this.showDatePicker = false;
           await this.loadData();
         },
 

@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-done: #22c55e;
+  --color-pending: #eab308;
+  --color-overdue: #ef4444;
+}
+
+[x-cloak] {
+  display: none !important;
+}

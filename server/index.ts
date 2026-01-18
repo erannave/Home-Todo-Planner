@@ -248,7 +248,7 @@ app.post("/api/tasks/:id/complete", async (c) => {
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = Number(c.req.param("id"));
-  const { completed_by_member_id, notes } = await c.req.json();
+  const { completed_by_member_id, notes, completed_at } = await c.req.json();
 
   // Verify task belongs to user
   const task = db
@@ -261,15 +261,16 @@ app.post("/api/tasks/:id/complete", async (c) => {
     return c.json({ error: "Task not found" }, 404);
   }
 
-  const now = new Date().toISOString();
+  // Use provided date or current time
+  const completionDate = completed_at ? new Date(completed_at).toISOString() : new Date().toISOString();
 
   db.run(
     `INSERT INTO task_completions (task_id, completed_by_member_id, completed_at, notes)
      VALUES (?, ?, ?, ?)`,
-    [id, completed_by_member_id || null, now, notes || null]
+    [id, completed_by_member_id || null, completionDate, notes || null]
   );
 
-  db.run("UPDATE tasks SET last_completed_at = ? WHERE id = ?", [now, id]);
+  db.run("UPDATE tasks SET last_completed_at = ? WHERE id = ?", [completionDate, id]);
 
   return c.json({ success: true });
 });
