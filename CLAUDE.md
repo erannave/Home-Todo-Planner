@@ -38,3 +38,30 @@ This is a household chore management app with recurring tasks.
 After running `bun run db:seed`:
 - Username: `demo`
 - Password: `demo123`
+
+## Portainer Deployment
+
+### Adding External Networks (e.g., Cloudflare Tunnel)
+
+After deploying the stack in Portainer, you can connect it to external networks (like a Cloudflare tunnel network) using Portainer's web editor:
+
+1. Go to **Stacks** → select the deployed stack
+2. Click **Editor** to edit the stack configuration
+3. Add the network configuration:
+
+```yaml
+services:
+  home-todo:
+    # ... existing config ...
+    networks:
+      - default
+      - cloudflare-tunnel
+
+networks:
+  cloudflare-tunnel:
+    external: true
+```
+
+4. Click **Update the stack**
+
+This approach keeps the base `docker-compose.yml` portable while allowing environment-specific network configurations to be added via Portainer.

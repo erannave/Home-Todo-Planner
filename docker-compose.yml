@@ -16,13 +16,6 @@ services:
       timeout: 3s
       start_period: 5s
       retries: 3
-    networks:
-      - default
-      - cloudflare-tunnel
-
-networks:
-  cloudflare-tunnel:
-    external: true
 
 volumes:
   todo-data:
