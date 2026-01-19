@@ -177,7 +177,7 @@
                 <!-- Tasks in group -->
                 <div class="space-y-2 pl-2" :style="{ borderLeft: '3px solid ' + group.color }">
                   <template x-for="task in group.tasks" :key="task.id">
-                    <div class="bg-white rounded-lg shadow-sm border p-3 flex flex-col md:flex-row md:items-center gap-3"
+                    <div class="bg-white rounded-lg shadow-sm border p-3 flex items-start md:items-center gap-3"
                       :class="{
                         'border-l-4 border-l-green-500': task.status === 'done',
                         'border-l-4 border-l-yellow-500': task.status === 'pending',
@@ -228,9 +228,14 @@
                       </div>
                       <div class="flex items-center gap-2">
                         <template x-if="completingTaskId !== task.id">
-                          <div class="flex items-center gap-2">
-                            <button @click="completingTaskId = task.id; selectedMemberId = task.assigned_member_id ? String(task.assigned_member_id) : ''; showDatePicker = false; customCompletionDate = ''" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                              Mark Done
+                          <div class="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+                            <button @click="completingTaskId = task.id; selectedMemberId = task.assigned_member_id ? String(task.assigned_member_id) : ''; showDatePicker = false; customCompletionDate = ''"
+                              class="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors"
+                              aria-label="Mark done"
+                              title="Mark Done">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                              </svg>
                             </button>
                             <button @click="editTask(task)"
                               aria-label="Edit task"
@@ -278,7 +283,7 @@
           <!-- Task List - Flat View -->
           <div class="space-y-2" x-show="!groupByCategory && filteredTasks.length > 0">
             <template x-for="task in filteredTasks" :key="task.id">
-              <div class="bg-white rounded-lg shadow-sm border p-3 flex flex-col md:flex-row md:items-center gap-3"
+              <div class="bg-white rounded-lg shadow-sm border p-3 flex items-start md:items-center gap-3"
                 :class="{
                   'border-l-4 border-l-green-500': task.status === 'done',
                   'border-l-4 border-l-yellow-500': task.status === 'pending',
@@ -332,9 +337,14 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <template x-if="completingTaskId !== task.id">
-                    <div class="flex items-center gap-2">
-                      <button @click="completingTaskId = task.id; selectedMemberId = task.assigned_member_id ? String(task.assigned_member_id) : ''; showDatePicker = false; customCompletionDate = ''" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
-                        Mark Done
+                    <div class="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+                      <button @click="completingTaskId = task.id; selectedMemberId = task.assigned_member_id ? String(task.assigned_member_id) : ''; showDatePicker = false; customCompletionDate = ''"
+                        class="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition-colors"
+                        aria-label="Mark done"
+                        title="Mark Done">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
                       </button>
                       <button @click="editTask(task)"
                         aria-label="Edit task"
