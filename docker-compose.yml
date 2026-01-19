@@ -1,7 +1,6 @@
 services:
   home-todo:
-    build: .
-    image: home-todo-planner:latest
+    image: erannave/home-todo-planner:latest
     container_name: home-todo-planner
     ports:
       - "3000:3000"
