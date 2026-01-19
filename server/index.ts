@@ -3,58 +3,64 @@ import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
-import { db } from "./db";
-
-// Type definitions for database queries
-interface TaskRow {
-  id: number;
-  name: string;
-  notes: string | null;
-  interval_days: number | null;
-  is_recurring: number;
-  due_date: string | null;
-  category_id: number | null;
-  category_name: string | null;
-  category_color: string | null;
-  assigned_member_id: number | null;
-  assigned_member_name: string | null;
-  last_completed_at: string | null;
-  created_at: string;
-}
-
-interface HistoryRow {
-  id: number;
-  task_id: number;
-  task_name: string;
-  is_recurring: number;
-  completed_by_name: string | null;
-  completed_at: string;
-  notes: string | null;
-}
-
-interface MemberRow {
-  id: number;
-  name: string;
-  created_at: string;
-}
-
-interface CategoryRow {
-  id: number;
-  name: string;
-  color: string;
-  created_at: string;
-}
+import {
+  ALLOW_SIGNUPS,
+  PORT,
+  SECURE_COOKIES,
+  SESSION_DURATION_MS,
+} from "./config";
+import {
+  createSession,
+  createUser,
+  deleteSession,
+  getUserById,
+  getUserByUsername,
+  getUserIdFromSessionId,
+  hashPassword,
+  usernameExists,
+  validatePassword,
+  validateUsername,
+  verifyPassword,
+} from "./services/auth.service";
+import {
+  createCategory,
+  deleteCategory,
+  getCategoriesForUser,
+  updateCategory,
+} from "./services/category.service";
+import {
+  clearHistoryForUser,
+  deleteHistoryEntry,
+  getHistoryEntry,
+  getHistoryForUser,
+} from "./services/history.service";
+import {
+  createMember,
+  deleteMember,
+  getMembersForUser,
+  updateMember,
+} from "./services/member.service";
+import {
+  completeTask,
+  createTask,
+  deleteTask,
+  getTaskById,
+  getTasksForUser,
+  updateTask,
+  validateTaskData,
+} from "./services/task.service";
 
 const app = new Hono();
 
 // CORS for development
 app.use("/*", cors());
 
-// Environment configuration
-const ALLOW_SIGNUPS = process.env.ALLOW_SIGNUPS?.toLowerCase() === "true";
-// SECURE_COOKIES: Set to "false" for local network HTTP deployments without TLS
-// Defaults to true for security - only disable if you understand the risks
-const SECURE_COOKIES = process.env.SECURE_COOKIES?.toLowerCase() !== "false";
+// Helper to get user ID from session cookie
+function getUserIdFromSession(c: Context): number | null {
+  const sessionId = getCookie(c, "session_id");
+  if (!sessionId) return null;
+  return getUserIdFromSessionId(sessionId);
+}
 
 // Health check endpoint
 app.get("/api/health", (c) => {
@@ -66,45 +72,6 @@ app.get("/api/config", (c) => {
   return c.json({ allowSignups: ALLOW_SIGNUPS });
 });
 
-// Session helpers
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-function generateSessionId(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join(
-    "",
-  );
-}
-
-async function hashPassword(password: string): Promise<string> {
-  return await Bun.password.hash(password, { algorithm: "argon2id" });
-}
-
-async function verifyPassword(
-  password: string,
-  hash: string,
-): Promise<boolean> {
-  return await Bun.password.verify(password, hash);
-}
-
-function getUserIdFromSession(c: Context): number | null {
-  const sessionId = getCookie(c, "session_id");
-  if (!sessionId) return null;
-
-  const session = db
-    .query<{ user_id: number; expires_at: string }, [string]>(
-      "SELECT user_id, expires_at FROM sessions WHERE id = ?",
-    )
-    .get(sessionId);
-
-  if (!session || new Date(session.expires_at) < new Date()) {
-    return null;
-  }
-
-  return session.user_id;
-}
-
 // Auth routes
 app.post("/api/register", async (c) => {
   if (!ALLOW_SIGNUPS) {
@@ -113,50 +80,23 @@ app.post("/api/register", async (c) => {
 
   const { username, password } = await c.req.json();
 
-  // Validate username format: alphanumeric + underscore, 3-20 chars
-  const usernameRegex = /^[a-zA-Z0-9_]+$/;
-  if (
-    !username ||
-    username.length < 3 ||
-    username.length > 20 ||
-    !usernameRegex.test(username)
-  ) {
-    return c.json(
-      {
-        error:
-          "Username must be 3-20 characters, letters, numbers and underscores only",
-      },
-      400,
-    );
+  const usernameValidation = validateUsername(username);
+  if (!usernameValidation.valid) {
+    return c.json({ error: usernameValidation.error }, 400);
   }
 
-  if (!password || password.length < 6) {
-    return c.json({ error: "Password must be at least 6 characters" }, 400);
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.valid) {
+    return c.json({ error: passwordValidation.error }, 400);
   }
 
-  const existing = db
-    .query<{ id: number }, [string]>("SELECT id FROM users WHERE username = ?")
-    .get(username.toLowerCase());
-
-  if (existing) {
+  if (usernameExists(username)) {
     return c.json({ error: "Username already taken" }, 400);
   }
 
   const passwordHash = await hashPassword(password);
-  const result = db.run(
-    "INSERT INTO users (username, password_hash) VALUES (?, ?)",
-    [username.toLowerCase(), passwordHash],
-  );
-
-  const userId = Number(result.lastInsertRowid);
-  const sessionId = generateSessionId();
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
-
-  db.run("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)", [
-    sessionId,
-    userId,
-    expiresAt,
-  ]);
+  const userId = createUser(username, passwordHash);
+  const { sessionId } = createSession(userId);
 
   setCookie(c, "session_id", sessionId, {
     httpOnly: true,
@@ -172,24 +112,12 @@ app.post("/api/register", async (c) => {
 app.post("/api/login", async (c) => {
   const { username, password } = await c.req.json();
 
-  const user = db
-    .query<{ id: number; username: string; password_hash: string }, [string]>(
-      "SELECT id, username, password_hash FROM users WHERE username = ?",
-    )
-    .get(username?.toLowerCase());
-
+  const user = getUserByUsername(username);
   if (!user || !(await verifyPassword(password, user.password_hash))) {
     return c.json({ error: "Invalid username or password" }, 401);
   }
 
-  const sessionId = generateSessionId();
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
-
-  db.run("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)", [
-    sessionId,
-    user.id,
-    expiresAt,
-  ]);
+  const { sessionId } = createSession(user.id);
 
   setCookie(c, "session_id", sessionId, {
     httpOnly: true,
@@ -205,7 +133,7 @@ app.post("/api/login", async (c) => {
 app.post("/api/logout", async (c) => {
   const sessionId = getCookie(c, "session_id");
   if (sessionId) {
-    db.run("DELETE FROM sessions WHERE id = ?", [sessionId]);
+    deleteSession(sessionId);
   }
   deleteCookie(c, "session_id");
   return c.json({ success: true });
@@ -217,12 +145,7 @@ app.get("/api/me", async (c) => {
     return c.json({ user: null });
   }
 
-  const user = db
-    .query<{ id: number; username: string }, [number]>(
-      "SELECT id, username FROM users WHERE id = ?",
-    )
-    .get(userId);
-
+  const user = getUserById(userId);
   return c.json({ user });
 });
 
@@ -231,120 +154,22 @@ app.get("/api/tasks", async (c) => {
   const userId = getUserIdFromSession(c);
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
-  const tasks = db
-    .query<TaskRow, [number]>(
-      `SELECT
-        t.id, t.name, t.notes, t.interval_days, t.is_recurring, t.due_date,
-        t.category_id, c.name as category_name, c.color as category_color,
-        t.assigned_member_id, m.name as assigned_member_name,
-        t.last_completed_at, t.created_at
-      FROM tasks t
-      LEFT JOIN categories c ON t.category_id = c.id
-      LEFT JOIN household_members m ON t.assigned_member_id = m.id
-      WHERE t.user_id = ? AND (t.is_recurring = 1 OR t.last_completed_at IS NULL)
-      ORDER BY t.name`,
-    )
-    .all(userId);
-
-  // Add status and next_due
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  const tasksWithStatus = tasks.map((task) => {
-    let status: "done" | "pending" | "overdue";
-    let nextDue: Date;
-
-    // Non-recurring task status logic
-    if (!task.is_recurring) {
-      if (!task.due_date) {
-        status = "pending";
-        nextDue = today;
-      } else {
-        const dueDate = new Date(task.due_date);
-        const dueDateDay = new Date(
-          dueDate.getFullYear(),
-          dueDate.getMonth(),
-          dueDate.getDate(),
-        );
-        nextDue = dueDateDay;
-        if (dueDateDay >= today) {
-          status = "pending";
-        } else {
-          status = "overdue";
-        }
-      }
-      return { ...task, status, next_due: nextDue.toISOString() };
-    }
-
-    // Recurring task status logic
-    if (!task.last_completed_at) {
-      status = "overdue";
-      nextDue = today;
-    } else {
-      const lastCompleted = new Date(task.last_completed_at);
-      nextDue = new Date(lastCompleted);
-      nextDue.setDate(nextDue.getDate() + (task.interval_days ?? 0));
-
-      const nextDueDay = new Date(
-        nextDue.getFullYear(),
-        nextDue.getMonth(),
-        nextDue.getDate(),
-      );
-
-      if (nextDueDay > today) {
-        status = "done";
-      } else if (nextDueDay.getTime() === today.getTime()) {
-        status = "pending";
-      } else {
-        status = "overdue";
-      }
-    }
-
-    return { ...task, status, next_due: nextDue.toISOString() };
-  });
-
-  return c.json(tasksWithStatus);
+  const tasks = getTasksForUser(userId);
+  return c.json(tasks);
 });
 
 app.post("/api/tasks", async (c) => {
   const userId = getUserIdFromSession(c);
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
-  const {
-    name,
-    notes,
-    interval_days,
-    category_id,
-    assigned_member_id,
-    is_recurring = true,
-    due_date,
-  } = await c.req.json();
-
-  if (!name) {
-    return c.json({ error: "Name is required" }, 400);
+  const data = await c.req.json();
+  const validation = validateTaskData(data);
+  if (!validation.valid) {
+    return c.json({ error: validation.error }, 400);
   }
 
-  // Validate: recurring tasks require interval_days
-  if (is_recurring && !interval_days) {
-    return c.json({ error: "Interval is required for recurring tasks" }, 400);
-  }
-
-  const result = db.run(
-    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      userId,
-      name,
-      notes || null,
-      is_recurring ? interval_days : null,
-      is_recurring ? 1 : 0,
-      is_recurring ? null : due_date || null,
-      category_id || null,
-      assigned_member_id || null,
-    ],
-  );
-
-  return c.json({ id: Number(result.lastInsertRowid) });
+  const id = createTask(userId, data);
+  return c.json({ id });
 });
 
 app.put("/api/tasks/:id", async (c) => {
@@ -352,38 +177,14 @@ app.put("/api/tasks/:id", async (c) => {
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = Number(c.req.param("id"));
-  const {
-    name,
-    notes,
-    interval_days,
-    category_id,
-    assigned_member_id,
-    is_recurring = true,
-    due_date,
-  } = await c.req.json();
+  const data = await c.req.json();
 
-  // Validate: recurring tasks require interval_days
-  if (is_recurring && !interval_days) {
-    return c.json({ error: "Interval is required for recurring tasks" }, 400);
+  const validation = validateTaskData(data);
+  if (!validation.valid) {
+    return c.json({ error: validation.error }, 400);
   }
 
-  db.run(
-    `UPDATE tasks
-     SET name = ?, notes = ?, interval_days = ?, is_recurring = ?, due_date = ?, category_id = ?, assigned_member_id = ?
-     WHERE id = ? AND user_id = ?`,
-    [
-      name,
-      notes || null,
-      is_recurring ? interval_days : null,
-      is_recurring ? 1 : 0,
-      is_recurring ? null : due_date || null,
-      category_id || null,
-      assigned_member_id || null,
-      id,
-      userId,
-    ],
-  );
-
+  updateTask(id, userId, data);
   return c.json({ success: true });
 });
 
@@ -392,8 +193,7 @@ app.delete("/api/tasks/:id", async (c) => {
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = Number(c.req.param("id"));
-  db.run("DELETE FROM tasks WHERE id = ? AND user_id = ?", [id, userId]);
-
+  deleteTask(id, userId);
   return c.json({ success: true });
 });
 
@@ -402,35 +202,15 @@ app.post("/api/tasks/:id/complete", async (c) => {
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = Number(c.req.param("id"));
-  const { completed_by_member_id, notes, completed_at } = await c.req.json();
 
   // Verify task belongs to user
-  const task = db
-    .query<{ id: number }, [number, number]>(
-      "SELECT id FROM tasks WHERE id = ? AND user_id = ?",
-    )
-    .get(id, userId);
-
+  const task = getTaskById(id, userId);
   if (!task) {
     return c.json({ error: "Task not found" }, 404);
   }
 
-  // Use provided date or current time
-  const completionDate = completed_at
-    ? new Date(completed_at).toISOString()
-    : new Date().toISOString();
-
-  db.run(
-    `INSERT INTO task_completions (task_id, completed_by_member_id, completed_at, notes)
-     VALUES (?, ?, ?, ?)`,
-    [id, completed_by_member_id || null, completionDate, notes || null],
-  );
-
-  db.run("UPDATE tasks SET last_completed_at = ? WHERE id = ?", [
-    completionDate,
-    id,
-  ]);
-
+  const data = await c.req.json();
+  completeTask(id, data);
   return c.json({ success: true });
 });
 
@@ -439,20 +219,7 @@ app.get("/api/history", async (c) => {
   const userId = getUserIdFromSession(c);
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
-  const history = db
-    .query<HistoryRow, [number]>(
-      `SELECT
-        tc.id, tc.task_id, t.name as task_name, t.is_recurring,
-        m.name as completed_by_name, tc.completed_at, tc.notes
-      FROM task_completions tc
-      JOIN tasks t ON tc.task_id = t.id
-      LEFT JOIN household_members m ON tc.completed_by_member_id = m.id
-      WHERE t.user_id = ?
-      ORDER BY tc.completed_at DESC
-      LIMIT 100`,
-    )
-    .all(userId);
-
+  const history = getHistoryForUser(userId);
   return c.json(history);
 });
 
@@ -462,34 +229,12 @@ app.delete("/api/history/:id", async (c) => {
 
   const id = Number(c.req.param("id"));
 
-  // Verify the completion belongs to a task owned by this user
-  const completion = db
-    .query<{ id: number; task_id: number }, [number, number]>(
-      `SELECT tc.id, tc.task_id FROM task_completions tc
-       JOIN tasks t ON tc.task_id = t.id
-       WHERE tc.id = ? AND t.user_id = ?`,
-    )
-    .get(id, userId);
-
-  if (!completion) {
+  const entry = getHistoryEntry(id, userId);
+  if (!entry) {
     return c.json({ error: "History entry not found" }, 404);
   }
 
-  db.run("DELETE FROM task_completions WHERE id = ?", [id]);
-
-  // Update the task's last_completed_at to the previous completion, if any
-  const previousCompletion = db
-    .query<{ completed_at: string }, [number]>(
-      `SELECT completed_at FROM task_completions
-       WHERE task_id = ? ORDER BY completed_at DESC LIMIT 1`,
-    )
-    .get(completion.task_id);
-
-  db.run("UPDATE tasks SET last_completed_at = ? WHERE id = ?", [
-    previousCompletion?.completed_at || null,
-    completion.task_id,
-  ]);
-
+  deleteHistoryEntry(id, entry.task_id);
   return c.json({ success: true });
 });
 
@@ -497,19 +242,7 @@ app.delete("/api/history", async (c) => {
   const userId = getUserIdFromSession(c);
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
-  // Delete all completions for tasks owned by this user
-  db.run(
-    `DELETE FROM task_completions WHERE task_id IN (
-      SELECT id FROM tasks WHERE user_id = ?
-    )`,
-    [userId],
-  );
-
-  // Reset last_completed_at for all user's tasks
-  db.run("UPDATE tasks SET last_completed_at = NULL WHERE user_id = ?", [
-    userId,
-  ]);
-
+  clearHistoryForUser(userId);
   return c.json({ success: true });
 });
 
@@ -518,12 +251,7 @@ app.get("/api/members", async (c) => {
   const userId = getUserIdFromSession(c);
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
-  const members = db
-    .query<MemberRow, [number]>(
-      "SELECT id, name, created_at FROM household_members WHERE user_id = ? ORDER BY name",
-    )
-    .all(userId);
-
+  const members = getMembersForUser(userId);
   return c.json(members);
 });
 
@@ -534,12 +262,8 @@ app.post("/api/members", async (c) => {
   const { name } = await c.req.json();
   if (!name) return c.json({ error: "Name is required" }, 400);
 
-  const result = db.run(
-    "INSERT INTO household_members (user_id, name) VALUES (?, ?)",
-    [userId, name],
-  );
-
-  return c.json({ id: Number(result.lastInsertRowid) });
+  const id = createMember(userId, name);
+  return c.json({ id });
 });
 
 app.put("/api/members/:id", async (c) => {
@@ -549,12 +273,7 @@ app.put("/api/members/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const { name } = await c.req.json();
 
-  db.run("UPDATE household_members SET name = ? WHERE id = ? AND user_id = ?", [
-    name,
-    id,
-    userId,
-  ]);
-
+  updateMember(id, userId, name);
   return c.json({ success: true });
 });
 
@@ -563,11 +282,7 @@ app.delete("/api/members/:id", async (c) => {
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = Number(c.req.param("id"));
-  db.run("DELETE FROM household_members WHERE id = ? AND user_id = ?", [
-    id,
-    userId,
-  ]);
-
+  deleteMember(id, userId);
   return c.json({ success: true });
 });
 
@@ -576,12 +291,7 @@ app.get("/api/categories", async (c) => {
   const userId = getUserIdFromSession(c);
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
-  const categories = db
-    .query<CategoryRow, [number]>(
-      "SELECT id, name, color, created_at FROM categories WHERE user_id = ? ORDER BY name",
-    )
-    .all(userId);
-
+  const categories = getCategoriesForUser(userId);
   return c.json(categories);
 });
 
@@ -592,12 +302,8 @@ app.post("/api/categories", async (c) => {
   const { name, color } = await c.req.json();
   if (!name) return c.json({ error: "Name is required" }, 400);
 
-  const result = db.run(
-    "INSERT INTO categories (user_id, name, color) VALUES (?, ?, ?)",
-    [userId, name, color || "#6b7280"],
-  );
-
-  return c.json({ id: Number(result.lastInsertRowid) });
+  const id = createCategory(userId, name, color);
+  return c.json({ id });
 });
 
 app.put("/api/categories/:id", async (c) => {
@@ -607,11 +313,7 @@ app.put("/api/categories/:id", async (c) => {
   const id = Number(c.req.param("id"));
   const { name, color } = await c.req.json();
 
-  db.run(
-    "UPDATE categories SET name = ?, color = ? WHERE id = ? AND user_id = ?",
-    [name, color || "#6b7280", id, userId],
-  );
-
+  updateCategory(id, userId, name, color);
   return c.json({ success: true });
 });
 
@@ -620,8 +322,7 @@ app.delete("/api/categories/:id", async (c) => {
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
   const id = Number(c.req.param("id"));
-  db.run("DELETE FROM categories WHERE id = ? AND user_id = ?", [id, userId]);
-
+  deleteCategory(id, userId);
   return c.json({ success: true });
 });
 
@@ -631,10 +332,9 @@ app.use("/*", serveStatic({ root: "./public" }));
 // Fallback to index.html for SPA routing
 app.get("*", serveStatic({ path: "./public/index.html" }));
 
-const port = process.env.PORT || 3000;
-console.log(`Server running on http://localhost:${port}`);
+console.log(`Server running on http://localhost:${PORT}`);
 
 export default {
-  port,
+  port: PORT,
   fetch: app.fetch,
 };

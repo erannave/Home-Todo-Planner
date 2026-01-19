@@ -37,7 +37,7 @@ bun run db:seed
 bun run dev
 ```
 
-The app will be available at http://localhost:3000
+The app will be available at <http://localhost:3000>
 
 ### Production Build
 
@@ -76,6 +76,7 @@ docker compose down
 ```
 
 Configuration is in `stack.env`:
+
 ```env
 ALLOW_SIGNUPS=true
 PORT=3000
@@ -90,6 +91,7 @@ DATA_PATH=/path/to/local/data  # Optional: use local path instead of Docker volu
 4. Deploy — Portainer will use `docker-compose.yml` and `stack.env`
 
 To use a local mount path, either:
+
 - Set `DATA_PATH` in `stack.env` before pushing
 - Or add `DATA_PATH` in Portainer's environment variables when deploying
 
@@ -106,12 +108,13 @@ To use a local mount path, either:
 ### Demo Account
 
 If you ran the seed script:
+
 - Email: `demo@example.com`
 - Password: `demo123`
 
 ## Project Structure
 
-```
+```text
 ├── server/
 │   ├── index.ts    # Hono API server
 │   └── db.ts       # SQLite database setup
@@ -125,16 +128,19 @@ If you ran the seed script:
 ## API Endpoints
 
 ### System
+
 - `GET /api/health` - Health check endpoint
 - `GET /api/config` - Public configuration (e.g., signup status)
 
 ### Authentication
+
 - `POST /api/register` - Create new account (requires `ALLOW_SIGNUPS=true`)
 - `POST /api/login` - Sign in
 - `POST /api/logout` - Sign out
 - `GET /api/me` - Get current user
 
 ### Tasks
+
 - `GET /api/tasks` - List all tasks with status
 - `POST /api/tasks` - Create task
 - `PUT /api/tasks/:id` - Update task
@@ -142,18 +148,21 @@ If you ran the seed script:
 - `POST /api/tasks/:id/complete` - Mark task as done
 
 ### Categories
+
 - `GET /api/categories` - List categories
 - `POST /api/categories` - Create category
 - `PUT /api/categories/:id` - Update category
 - `DELETE /api/categories/:id` - Delete category
 
 ### Members
+
 - `GET /api/members` - List household members
 - `POST /api/members` - Add member
 - `PUT /api/members/:id` - Update member
 - `DELETE /api/members/:id` - Remove member
 
 ### History
+
 - `GET /api/history` - Get completion history (last 100)
 
 ## License
