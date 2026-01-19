@@ -64,13 +64,14 @@ db.exec(`
 `);
 
 // Create a demo user (password: demo123)
-const passwordHash = Bun.hash("demo123").toString(16);
-
 const existingUser = db
   .query("SELECT id FROM users WHERE email = ?")
   .get("demo@example.com");
 
 if (!existingUser) {
+  const passwordHash = await Bun.password.hash("demo123", {
+    algorithm: "argon2id",
+  });
   const result = db.run(
     "INSERT INTO users (email, password_hash) VALUES (?, ?)",
     ["demo@example.com", passwordHash],

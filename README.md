@@ -100,6 +100,7 @@ To use a local mount path, either:
 | `PORT` | `3000` | Server port |
 | `DATABASE_PATH` | `./data/chores.db` | SQLite database path |
 | `ALLOW_SIGNUPS` | `false` | Enable user registration |
+| `SECURE_COOKIES` | `true` | Set to `false` for local network HTTP deployments without TLS |
 | `DATA_PATH` | `todo-data` | Docker volume or local path for data persistence |
 
 ### Demo Account

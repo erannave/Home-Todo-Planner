@@ -29,7 +29,7 @@ This is a household chore management app with recurring tasks.
 - Tasks have `interval_days` for recurrence and computed status (done/pending/overdue based on `last_completed_at`)
 - Task completions form an audit trail of who completed what
 
-**Auth:** Session-based with HTTP-only cookies. Sessions stored in SQLite with 7-day expiry.
+**Auth:** Session-based with HTTP-only cookies (Argon2id password hashing). Sessions stored in SQLite with 7-day expiry. Set `SECURE_COOKIES=false` for local network HTTP deployments.
 
 **API Pattern:** All data endpoints require authentication via `getUserIdFromSession()`. Routes return JSON. Non-API routes fall back to `index.html` for SPA routing.
 

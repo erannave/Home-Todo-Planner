@@ -52,6 +52,9 @@ app.use("/*", cors());
 
 // Environment configuration
 const ALLOW_SIGNUPS = process.env.ALLOW_SIGNUPS?.toLowerCase() === "true";
+// SECURE_COOKIES: Set to "false" for local network HTTP deployments without TLS
+// Defaults to true for security - only disable if you understand the risks
+const SECURE_COOKIES = process.env.SECURE_COOKIES?.toLowerCase() !== "false";
 
 // Health check endpoint
 app.get("/api/health", (c) => {
@@ -74,8 +77,15 @@ function generateSessionId(): string {
   );
 }
 
-function hashPassword(password: string): string {
-  return Bun.hash(password).toString(16);
+async function hashPassword(password: string): Promise<string> {
+  return await Bun.password.hash(password, { algorithm: "argon2id" });
+}
+
+async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
+  return await Bun.password.verify(password, hash);
 }
 
 function getUserIdFromSession(c: Context): number | null {
@@ -115,9 +125,10 @@ app.post("/api/register", async (c) => {
     return c.json({ error: "Email already registered" }, 400);
   }
 
+  const passwordHash = await hashPassword(password);
   const result = db.run(
     "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-    [email.toLowerCase(), hashPassword(password)],
+    [email.toLowerCase(), passwordHash],
   );
 
   const userId = Number(result.lastInsertRowid);
@@ -132,7 +143,7 @@ app.post("/api/register", async (c) => {
 
   setCookie(c, "session_id", sessionId, {
     httpOnly: true,
-    secure: false,
+    secure: SECURE_COOKIES,
     sameSite: "Lax",
     maxAge: SESSION_DURATION_MS / 1000,
     path: "/",
@@ -150,7 +161,7 @@ app.post("/api/login", async (c) => {
     )
     .get(email?.toLowerCase());
 
-  if (!user || hashPassword(password) !== user.password_hash) {
+  if (!user || !(await verifyPassword(password, user.password_hash))) {
     return c.json({ error: "Invalid email or password" }, 401);
   }
 
@@ -165,7 +176,7 @@ app.post("/api/login", async (c) => {
 
   setCookie(c, "session_id", sessionId, {
     httpOnly: true,
-    secure: false,
+    secure: SECURE_COOKIES,
     sameSite: "Lax",
     maxAge: SESSION_DURATION_MS / 1000,
     path: "/",
