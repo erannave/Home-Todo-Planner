@@ -36,5 +36,5 @@ This is a household chore management app with recurring tasks.
 ## Demo Credentials
 
 After running `bun run db:seed`:
-- Email: `demo@example.com`
+- Username: `demo`
 - Password: `demo123`

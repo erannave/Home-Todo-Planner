@@ -21,7 +21,7 @@ function app() {
   return {
     user: null,
     isLogin: true,
-    authEmail: "",
+    authUsername: "",
     authPassword: "",
     authConfirmPassword: "",
     authError: "",
@@ -200,8 +200,15 @@ function app() {
     async register() {
       this.authError = "";
 
-      if (!this.authEmail || !this.authEmail.includes("@")) {
-        this.authError = "Please enter a valid email address";
+      const usernameRegex = /^[a-zA-Z0-9_]+$/;
+      if (
+        !this.authUsername ||
+        this.authUsername.length < 3 ||
+        this.authUsername.length > 20 ||
+        !usernameRegex.test(this.authUsername)
+      ) {
+        this.authError =
+          "Username must be 3-20 characters, letters, numbers and underscores only";
         return;
       }
 
@@ -220,7 +227,7 @@ function app() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: this.authEmail,
+            username: this.authUsername,
             password: this.authPassword,
           }),
         });
@@ -228,8 +235,8 @@ function app() {
         if (data.error) {
           this.authError = data.error;
         } else {
-          this.user = { email: data.email };
-          this.authEmail = "";
+          this.user = { username: data.username };
+          this.authUsername = "";
           this.authPassword = "";
           this.authConfirmPassword = "";
           await this.loadData();
@@ -242,8 +249,8 @@ function app() {
     async login() {
       this.authError = "";
 
-      if (!this.authEmail || !this.authEmail.includes("@")) {
-        this.authError = "Please enter a valid email address";
+      if (!this.authUsername) {
+        this.authError = "Please enter your username";
         return;
       }
 
@@ -257,7 +264,7 @@ function app() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: this.authEmail,
+            username: this.authUsername,
             password: this.authPassword,
           }),
         });
@@ -265,8 +272,8 @@ function app() {
         if (data.error) {
           this.authError = data.error;
         } else {
-          this.user = { email: data.email };
-          this.authEmail = "";
+          this.user = { username: data.username };
+          this.authUsername = "";
           this.authPassword = "";
           await this.loadData();
         }

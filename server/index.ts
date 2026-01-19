@@ -111,24 +111,41 @@ app.post("/api/register", async (c) => {
     return c.json({ error: "Signups are disabled" }, 403);
   }
 
-  const { email, password } = await c.req.json();
+  const { username, password } = await c.req.json();
 
-  if (!email || !password || password.length < 6) {
-    return c.json({ error: "Invalid email or password (min 6 chars)" }, 400);
+  // Validate username format: alphanumeric + underscore, 3-20 chars
+  const usernameRegex = /^[a-zA-Z0-9_]+$/;
+  if (
+    !username ||
+    username.length < 3 ||
+    username.length > 20 ||
+    !usernameRegex.test(username)
+  ) {
+    return c.json(
+      {
+        error:
+          "Username must be 3-20 characters, letters, numbers and underscores only",
+      },
+      400,
+    );
+  }
+
+  if (!password || password.length < 6) {
+    return c.json({ error: "Password must be at least 6 characters" }, 400);
   }
 
   const existing = db
-    .query<{ id: number }, [string]>("SELECT id FROM users WHERE email = ?")
-    .get(email.toLowerCase());
+    .query<{ id: number }, [string]>("SELECT id FROM users WHERE username = ?")
+    .get(username.toLowerCase());
 
   if (existing) {
-    return c.json({ error: "Email already registered" }, 400);
+    return c.json({ error: "Username already taken" }, 400);
   }
 
   const passwordHash = await hashPassword(password);
   const result = db.run(
-    "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-    [email.toLowerCase(), passwordHash],
+    "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+    [username.toLowerCase(), passwordHash],
   );
 
   const userId = Number(result.lastInsertRowid);
@@ -149,20 +166,20 @@ app.post("/api/register", async (c) => {
     path: "/",
   });
 
-  return c.json({ success: true, email: email.toLowerCase() });
+  return c.json({ success: true, username: username.toLowerCase() });
 });
 
 app.post("/api/login", async (c) => {
-  const { email, password } = await c.req.json();
+  const { username, password } = await c.req.json();
 
   const user = db
-    .query<{ id: number; email: string; password_hash: string }, [string]>(
-      "SELECT id, email, password_hash FROM users WHERE email = ?",
+    .query<{ id: number; username: string; password_hash: string }, [string]>(
+      "SELECT id, username, password_hash FROM users WHERE username = ?",
     )
-    .get(email?.toLowerCase());
+    .get(username?.toLowerCase());
 
   if (!user || !(await verifyPassword(password, user.password_hash))) {
-    return c.json({ error: "Invalid email or password" }, 401);
+    return c.json({ error: "Invalid username or password" }, 401);
   }
 
   const sessionId = generateSessionId();
@@ -182,7 +199,7 @@ app.post("/api/login", async (c) => {
     path: "/",
   });
 
-  return c.json({ success: true, email: user.email });
+  return c.json({ success: true, username: user.username });
 });
 
 app.post("/api/logout", async (c) => {
@@ -201,8 +218,8 @@ app.get("/api/me", async (c) => {
   }
 
   const user = db
-    .query<{ id: number; email: string }, [number]>(
-      "SELECT id, email FROM users WHERE id = ?",
+    .query<{ id: number; username: string }, [number]>(
+      "SELECT id, username FROM users WHERE id = ?",
     )
     .get(userId);
 

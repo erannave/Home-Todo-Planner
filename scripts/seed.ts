@@ -6,7 +6,7 @@ const db = new Database("data/chores.db", { create: true });
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL UNIQUE,
+    username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
@@ -65,16 +65,16 @@ db.exec(`
 
 // Create a demo user (password: demo123)
 const existingUser = db
-  .query("SELECT id FROM users WHERE email = ?")
-  .get("demo@example.com");
+  .query("SELECT id FROM users WHERE username = ?")
+  .get("demo");
 
 if (!existingUser) {
   const passwordHash = await Bun.password.hash("demo123", {
     algorithm: "argon2id",
   });
   const result = db.run(
-    "INSERT INTO users (email, password_hash) VALUES (?, ?)",
-    ["demo@example.com", passwordHash],
+    "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+    ["demo", passwordHash],
   );
   const userId = Number(result.lastInsertRowid);
 
@@ -245,7 +245,7 @@ if (!existingUser) {
   );
 
   console.log("Database seeded successfully!");
-  console.log("Demo user: demo@example.com / demo123");
+  console.log("Demo user: demo / demo123");
 } else {
   console.log("Database already seeded.");
 }
