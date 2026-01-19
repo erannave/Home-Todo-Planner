@@ -63,6 +63,16 @@ function app() {
     errorMessage: "",
     toast: { show: false, message: "", type: "success" },
 
+    // Confirm modal state
+    confirmModal: {
+      show: false,
+      title: "",
+      message: "",
+      confirmText: "Delete",
+      confirmClass: "bg-red-600 hover:bg-red-700",
+      resolve: null,
+    },
+
     showToast(message, type = "success") {
       this.toast = { show: true, message, type };
       setTimeout(() => {
@@ -75,6 +85,29 @@ function app() {
       setTimeout(() => {
         this.errorMessage = "";
       }, ERROR_DURATION_MS);
+    },
+
+    showConfirm(options = {}) {
+      return new Promise((resolve) => {
+        this.confirmModal = {
+          show: true,
+          title: options.title || "Confirm",
+          message: options.message || "Are you sure?",
+          confirmText: options.confirmText || "Delete",
+          confirmClass:
+            options.confirmClass ||
+            "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+          resolve,
+        };
+      });
+    },
+
+    handleConfirm(confirmed) {
+      if (this.confirmModal.resolve) {
+        this.confirmModal.resolve(confirmed);
+      }
+      this.confirmModal.show = false;
+      this.confirmModal.resolve = null;
     },
 
     loadPreferences() {
@@ -499,7 +532,12 @@ function app() {
     },
 
     async deleteTask(id) {
-      if (!confirm("Are you sure you want to delete this task?")) return;
+      const confirmed = await this.showConfirm({
+        title: "Delete Task",
+        message: "Are you sure you want to delete this task?",
+        confirmText: "Delete",
+      });
+      if (!confirmed) return;
       try {
         const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete task");
@@ -548,7 +586,12 @@ function app() {
     },
 
     async deleteCategory(id) {
-      if (!confirm("Are you sure you want to delete this category?")) return;
+      const confirmed = await this.showConfirm({
+        title: "Delete Category",
+        message: "Are you sure you want to delete this category?",
+        confirmText: "Delete",
+      });
+      if (!confirmed) return;
       try {
         const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete category");
@@ -594,7 +637,12 @@ function app() {
     },
 
     async deleteMember(id) {
-      if (!confirm("Are you sure you want to remove this member?")) return;
+      const confirmed = await this.showConfirm({
+        title: "Remove Member",
+        message: "Are you sure you want to remove this member?",
+        confirmText: "Remove",
+      });
+      if (!confirmed) return;
       try {
         const res = await fetch(`/api/members/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to remove member");
@@ -606,8 +654,12 @@ function app() {
     },
 
     async deleteHistoryItem(id) {
-      if (!confirm("Are you sure you want to delete this history entry?"))
-        return;
+      const confirmed = await this.showConfirm({
+        title: "Delete History Entry",
+        message: "Are you sure you want to delete this history entry?",
+        confirmText: "Delete",
+      });
+      if (!confirmed) return;
       try {
         const res = await fetch(`/api/history/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete history entry");
@@ -619,12 +671,13 @@ function app() {
     },
 
     async clearHistory() {
-      if (
-        !confirm(
+      const confirmed = await this.showConfirm({
+        title: "Clear All History",
+        message:
           "Are you sure you want to clear all history? This cannot be undone.",
-        )
-      )
-        return;
+        confirmText: "Clear All",
+      });
+      if (!confirmed) return;
       try {
         const res = await fetch("/api/history", { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to clear history");
