@@ -121,25 +121,15 @@
           </div>
 
           <!-- Stats -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <button @click="filterStatus = filterStatus === 'overdue' ? 'all' : 'overdue'"
-              aria-label="Filter tasks by overdue status"
-              :aria-pressed="filterStatus === 'overdue'"
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button @click="filterStatus = filterStatus === 'action-needed' ? 'all' : 'action-needed'"
+              aria-label="Filter tasks needing immediate action"
+              :aria-pressed="filterStatus === 'action-needed'"
               class="rounded-lg shadow-sm border px-3 py-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-              :class="filterStatus === 'overdue' ? 'bg-red-50 border-l-4 border-l-red-500' : 'bg-white hover:bg-slate-50'">
+              :class="filterStatus === 'action-needed' ? 'bg-red-50 border-l-4 border-l-red-500' : 'bg-white hover:bg-slate-50'">
               <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-slate-600">Overdue</span>
-                <span class="text-2xl font-bold text-red-600" x-text="taskStats.overdue"></span>
-              </div>
-            </button>
-            <button @click="filterStatus = filterStatus === 'pending' ? 'all' : 'pending'"
-              aria-label="Filter tasks due today"
-              :aria-pressed="filterStatus === 'pending'"
-              class="rounded-lg shadow-sm border px-3 py-2 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-              :class="filterStatus === 'pending' ? 'bg-yellow-50 border-l-4 border-l-yellow-500' : 'bg-white hover:bg-slate-50'">
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-slate-600">Due Today</span>
-                <span class="text-2xl font-bold text-yellow-600" x-text="taskStats.pending"></span>
+                <span class="text-sm font-medium text-slate-600">Action Needed</span>
+                <span class="text-2xl font-bold text-red-600" x-text="taskStats.overdue + taskStats.pending"></span>
               </div>
             </button>
             <button @click="filterStatus = filterStatus === 'done' ? 'all' : 'done'"

@@ -317,7 +317,13 @@ function app() {
     get filteredTasks() {
       let filtered = this.tasks;
       if (this.filterStatus !== "all") {
-        filtered = filtered.filter((t) => t.status === this.filterStatus);
+        if (this.filterStatus === "action-needed") {
+          filtered = filtered.filter(
+            (t) => t.status === "overdue" || t.status === "pending",
+          );
+        } else {
+          filtered = filtered.filter((t) => t.status === this.filterStatus);
+        }
       }
       if (this.filterCategory !== "all") {
         filtered = filtered.filter(
