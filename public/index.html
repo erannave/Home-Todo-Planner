@@ -243,8 +243,8 @@
                         </div>
                         <div x-show="task.notes" class="mt-2 pl-3 border-l-2 border-slate-200 text-sm text-slate-600 italic" x-text="task.notes"></div>
                       </div>
-                      <!-- 8-Day Status Preview (hidden on mobile) -->
-                      <div class="hidden md:flex flex-1 justify-center items-center gap-0.5" title="8-day status preview">
+                      <!-- Status Preview (hidden on mobile) -->
+                      <div class="hidden sm:flex flex-1 justify-start items-center gap-0.5" title="Status preview">
                         <template x-for="day in get8DayPreview(task)" :key="day.day">
                           <div class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold text-white/90"
                             :class="{
@@ -352,8 +352,8 @@
                   </div>
                   <div x-show="task.notes" class="mt-2 pl-3 border-l-2 border-slate-200 text-sm text-slate-600 italic" x-text="task.notes"></div>
                 </div>
-                <!-- 8-Day Status Preview (hidden on mobile) -->
-                <div class="hidden md:flex flex-1 justify-center items-center gap-0.5" title="8-day status preview">
+                <!-- Status Preview (hidden on mobile) -->
+                <div class="hidden sm:flex flex-1 justify-start items-center gap-0.5" title="Status preview">
                   <template x-for="day in get8DayPreview(task)" :key="day.day">
                     <div class="w-4 h-4 rounded-sm flex items-center justify-center text-[9px] font-bold text-white/90"
                       :class="{

@@ -404,11 +404,38 @@ function app() {
       return "overdue";
     },
 
+    getDaysUntilDue(task) {
+      const MS_PER_DAY = 1000 * 60 * 60 * 24;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Non-recurring tasks without due date
+      if (!task.is_recurring && !task.due_date) {
+        return 0; // Show only today (overdue)
+      }
+
+      // Determine reference date (due_date for non-recurring, next_due for recurring)
+      const referenceDate = new Date(
+        task.is_recurring ? task.next_due : task.due_date,
+      );
+      referenceDate.setHours(0, 0, 0, 0);
+
+      const daysUntilDue = Math.ceil((referenceDate - today) / MS_PER_DAY);
+      return daysUntilDue;
+    },
+
     get8DayPreview(task) {
       const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
       const today = new Date();
 
-      return Array.from({ length: 8 }, (_, i) => {
+      // Calculate how many days to show
+      const daysUntilDue = this.getDaysUntilDue(task);
+
+      // For overdue or due today, show only 1 day
+      // For future tasks, show up to the due date (inclusive) with max of 8 days
+      const numDays = daysUntilDue <= 0 ? 1 : Math.min(daysUntilDue + 1, 8);
+
+      return Array.from({ length: numDays }, (_, i) => {
         const date = new Date(today);
         date.setDate(date.getDate() + i);
         return {
