@@ -35,6 +35,10 @@ import {
   getHistoryForUser,
 } from "./services/history.service";
 import {
+  getDayOfWeekStats,
+  getWeeklyStats,
+} from "./services/history-stats.service";
+import {
   createMember,
   deleteMember,
   getMembersForUser,
@@ -244,6 +248,23 @@ app.delete("/api/history", async (c) => {
 
   clearHistoryForUser(userId);
   return c.json({ success: true });
+});
+
+// History stats routes
+app.get("/api/history/stats/weekly", async (c) => {
+  const userId = getUserIdFromSession(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const weeks = getWeeklyStats(userId);
+  return c.json({ weeks });
+});
+
+app.get("/api/history/stats/day-of-week", async (c) => {
+  const userId = getUserIdFromSession(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const days = getDayOfWeekStats(userId);
+  return c.json({ days });
 });
 
 // Members routes

@@ -73,6 +73,13 @@ function app() {
       resolve: null,
     },
 
+    // History stats
+    weeklyStats: [],
+    dayOfWeekStats: [],
+    historyStatsLoading: false,
+    weeklyChart: null,
+    dayOfWeekChart: null,
+
     showToast(message, type = "success") {
       this.toast = { show: true, message, type };
       setTimeout(() => {
@@ -726,6 +733,140 @@ function app() {
         this.showToast("Failed to clear history", "error");
       }
       await this.loadData();
+      await this.loadHistoryStats();
+    },
+
+    async loadHistoryStats() {
+      this.historyStatsLoading = true;
+      try {
+        const [weeklyRes, dayOfWeekRes] = await Promise.all([
+          fetch("/api/history/stats/weekly"),
+          fetch("/api/history/stats/day-of-week"),
+        ]);
+
+        if (!weeklyRes.ok || !dayOfWeekRes.ok) {
+          throw new Error("Failed to load history stats");
+        }
+
+        const weeklyData = await weeklyRes.json();
+        const dayOfWeekData = await dayOfWeekRes.json();
+
+        this.weeklyStats = weeklyData.weeks;
+        this.dayOfWeekStats = dayOfWeekData.days;
+
+        // Render charts after data is loaded (use nextTick to ensure DOM is ready)
+        this.$nextTick(() => {
+          this.renderWeeklyChart();
+          this.renderDayOfWeekChart();
+        });
+      } catch {
+        console.error("Failed to load history stats");
+      } finally {
+        this.historyStatsLoading = false;
+      }
+    },
+
+    renderWeeklyChart() {
+      const canvas = document.getElementById("weeklyChart");
+      if (!canvas || !this.weeklyStats.length) return;
+
+      // Destroy existing chart if it exists
+      if (this.weeklyChart) {
+        this.weeklyChart.destroy();
+      }
+
+      const labels = this.weeklyStats.map((w) => {
+        const date = new Date(w.week_start);
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      });
+
+      const data = this.weeklyStats.map((w) => w.count);
+
+      this.weeklyChart = new Chart(canvas, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Completions",
+              data,
+              borderColor: "#3b82f6",
+              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              fill: true,
+              tension: 0.3,
+              pointBackgroundColor: "#3b82f6",
+              pointBorderColor: "#fff",
+              pointBorderWidth: 2,
+              pointRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+              },
+            },
+          },
+        },
+      });
+    },
+
+    renderDayOfWeekChart() {
+      const canvas = document.getElementById("dayOfWeekChart");
+      if (!canvas || !this.dayOfWeekStats.length) return;
+
+      // Destroy existing chart if it exists
+      if (this.dayOfWeekChart) {
+        this.dayOfWeekChart.destroy();
+      }
+
+      const labels = this.dayOfWeekStats.map((d) => d.name.substring(0, 3));
+      const data = this.dayOfWeekStats.map((d) => d.count);
+
+      this.dayOfWeekChart = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Completions",
+              data,
+              backgroundColor: "#22c55e",
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false,
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+              },
+            },
+          },
+        },
+      });
     },
   };
 }
