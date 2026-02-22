@@ -138,7 +138,7 @@ if (!existingUser) {
   weekAgo.setDate(weekAgo.getDate() - 7);
 
   // Recurring tasks
-  db.run(
+  const t1 = db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     [
       userId,
@@ -152,7 +152,7 @@ if (!existingUser) {
     ],
   );
 
-  db.run(
+  const t2 = db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     [
       userId,
@@ -166,7 +166,7 @@ if (!existingUser) {
     ],
   );
 
-  db.run(
+  const t3 = db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id, last_completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     [
       userId,
@@ -180,15 +180,53 @@ if (!existingUser) {
     ],
   );
 
-  db.run(
+  const t4 = db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, assigned_member_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
     [userId, "Mow the lawn", null, 14, 1, gardenId, members[2].id],
   );
 
-  db.run(
+  const t5 = db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id) VALUES (?, ?, ?, ?, ?, ?)",
     [userId, "Take out trash", null, 2, 1, kitchenId],
   );
+
+  // --- Generate History for the last 60 days ---
+  const insertCompletion = db.prepare("INSERT INTO task_completions (task_id, completed_by_member_id, completed_at, notes) VALUES (?, ?, ?, ?)");
+
+  // Clean kitchen counters (Interval 1) - actually done every ~1.5 days on average (unhealthy)
+  let d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  while (d < yesterday) {
+    insertCompletion.run(t1.lastInsertRowid, members[0].id, d.toISOString(), null);
+    d = new Date(d.getTime() + (Math.random() * 2 + 0.5) * 24 * 60 * 60 * 1000); // 0.5 to 2.5 days
+  }
+
+  // Vacuum living room (Interval 3) - done perfectly every 3 days (healthy)
+  d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  while (d < threeDaysAgo) {
+    insertCompletion.run(t2.lastInsertRowid, null, d.toISOString(), null);
+    d = new Date(d.getTime() + 3 * 24 * 60 * 60 * 1000);
+  }
+
+  // Clean bathroom (Interval 7) - done every 10 days (unhealthy)
+  d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  while (d < weekAgo) {
+    insertCompletion.run(t3.lastInsertRowid, members[1].id, d.toISOString(), "Hated it");
+    d = new Date(d.getTime() + (Math.random() * 4 + 8) * 24 * 60 * 60 * 1000); // 8 to 12 days
+  }
+
+  // Mow the lawn (Interval 14) - done every 12 days (healthy)
+  d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  while (d < yesterday) { // completed yesterday maybe?
+    insertCompletion.run(t4.lastInsertRowid, members[2].id, d.toISOString(), "Looks good");
+    d = new Date(d.getTime() + (Math.random() * 4 + 10) * 24 * 60 * 60 * 1000); // 10 to 14 days
+  }
+
+  // Take out trash (Interval 2) - done every 2.5 days
+  d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+  while (d < yesterday) {
+    insertCompletion.run(t5.lastInsertRowid, null, d.toISOString(), null);
+    d = new Date(d.getTime() + (Math.random() * 2 + 1.5) * 24 * 60 * 60 * 1000); // 1.5 to 3.5 days
+  }
 
   // Non-recurring tasks (one-time)
   const tomorrow = new Date(now);

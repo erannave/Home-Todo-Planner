@@ -117,3 +117,93 @@ export function getDayOfWeekStats(
     count: dayMap.get(day) || 0,
   }));
 }
+
+export interface TaskHealthStat {
+  task_id: number;
+  task_name: string;
+  target_interval_days: number;
+  actual_average_days: number | null;
+  overdue_count: number;
+  longest_overdue_days: number | null;
+}
+
+/**
+ * Get task health stats (target vs actual frequency) for recurring tasks.
+ */
+export function getTaskHealthStats(
+  userId: number,
+  db: Database = defaultDb,
+): TaskHealthStat[] {
+  // Get all recurring tasks for user
+  const tasks = db
+    .query<{ id: number; name: string; interval_days: number }, [number]>(
+      `SELECT id, name, interval_days FROM tasks WHERE user_id = ? AND is_recurring = 1`,
+    )
+    .all(userId);
+
+  // Get all completions for these tasks, ordered by completed_at ASC
+  const completions = db
+    .query<{ task_id: number; completed_at: string }, [number]>(
+      `SELECT tc.task_id, tc.completed_at 
+       FROM task_completions tc
+       JOIN tasks t ON tc.task_id = t.id
+       WHERE t.user_id = ? AND t.is_recurring = 1
+       ORDER BY tc.task_id, tc.completed_at ASC`,
+    )
+    .all(userId);
+
+  // Group completions by task_id
+  const completionsByTask = new Map<number, Date[]>();
+  for (const c of completions) {
+    if (!completionsByTask.has(c.task_id)) {
+      completionsByTask.set(c.task_id, []);
+    }
+    completionsByTask.get(c.task_id)!.push(new Date(c.completed_at));
+  }
+
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
+  const stats: TaskHealthStat[] = [];
+
+  for (const task of tasks) {
+    const dates = completionsByTask.get(task.id) || [];
+    let actual_average_days: number | null = null;
+    let overdue_count = 0;
+    let longest_overdue_days: number | null = null;
+
+    if (dates.length > 1) {
+      let total_diff = 0;
+      for (let i = 1; i < dates.length; i++) {
+        const diffDays =
+          (dates[i].getTime() - dates[i - 1].getTime()) / MS_PER_DAY;
+        total_diff += diffDays;
+
+        const overdueDays = diffDays - task.interval_days;
+        if (overdueDays > 0) {
+          overdue_count++;
+          if (
+            longest_overdue_days === null ||
+            overdueDays > longest_overdue_days
+          ) {
+            longest_overdue_days = overdueDays;
+          }
+        }
+      }
+      actual_average_days = total_diff / (dates.length - 1);
+    }
+
+    stats.push({
+      task_id: task.id,
+      task_name: task.name,
+      target_interval_days: task.interval_days,
+      actual_average_days: actual_average_days
+        ? Math.round(actual_average_days * 10) / 10
+        : null,
+      overdue_count,
+      longest_overdue_days: longest_overdue_days
+        ? Math.round(longest_overdue_days * 10) / 10
+        : null,
+    });
+  }
+
+  return stats;
+}

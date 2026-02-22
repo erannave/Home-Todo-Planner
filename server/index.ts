@@ -36,6 +36,7 @@ import {
 } from "./services/history.service";
 import {
   getDayOfWeekStats,
+  getTaskHealthStats,
   getWeeklyStats,
 } from "./services/history-stats.service";
 import {
@@ -265,6 +266,14 @@ app.get("/api/history/stats/day-of-week", async (c) => {
 
   const days = getDayOfWeekStats(userId);
   return c.json({ days });
+});
+
+app.get("/api/history/stats/task-health", async (c) => {
+  const userId = getUserIdFromSession(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const health = getTaskHealthStats(userId);
+  return c.json({ health });
 });
 
 // Members routes

@@ -76,9 +76,11 @@ function app() {
     // History stats
     weeklyStats: [],
     dayOfWeekStats: [],
+    taskHealthStats: [],
     historyStatsLoading: false,
     weeklyChart: null,
     dayOfWeekChart: null,
+    taskHealthChart: null,
 
     showToast(message, type = "success") {
       this.toast = { show: true, message, type };
@@ -748,25 +750,29 @@ function app() {
     async loadHistoryStats() {
       this.historyStatsLoading = true;
       try {
-        const [weeklyRes, dayOfWeekRes] = await Promise.all([
+        const [weeklyRes, dayOfWeekRes, taskHealthRes] = await Promise.all([
           fetch("/api/history/stats/weekly"),
           fetch("/api/history/stats/day-of-week"),
+          fetch("/api/history/stats/task-health"),
         ]);
 
-        if (!weeklyRes.ok || !dayOfWeekRes.ok) {
+        if (!weeklyRes.ok || !dayOfWeekRes.ok || !taskHealthRes.ok) {
           throw new Error("Failed to load history stats");
         }
 
         const weeklyData = await weeklyRes.json();
         const dayOfWeekData = await dayOfWeekRes.json();
+        const taskHealthData = await taskHealthRes.json();
 
         this.weeklyStats = weeklyData.weeks;
         this.dayOfWeekStats = dayOfWeekData.days;
+        this.taskHealthStats = taskHealthData.health;
 
         // Render charts after data is loaded (use nextTick to ensure DOM is ready)
         this.$nextTick(() => {
           this.renderWeeklyChart();
           this.renderDayOfWeekChart();
+          this.renderTaskHealthChart();
         });
       } catch {
         console.error("Failed to load history stats");
@@ -827,6 +833,80 @@ function app() {
               ticks: {
                 stepSize: 1,
               },
+            },
+          },
+        },
+      });
+    },
+
+    renderTaskHealthChart() {
+      const canvas = document.getElementById("taskHealthChart");
+      if (!canvas || !this.taskHealthStats.length) return;
+
+      if (this.taskHealthChart) {
+        this.taskHealthChart.destroy();
+      }
+
+      // Filter tasks that have at least one completion (actual_average_days is not null)
+      const validStats = this.taskHealthStats.filter(s => s.actual_average_days !== null);
+      if (validStats.length === 0) return;
+
+      const labels = validStats.map(s => s.task_name);
+
+      const targetData = validStats.map(s => s.target_interval_days);
+      // Fallback actual average to 0 if it's null (though we filtered them above)
+      const actualData = validStats.map(s => s.actual_average_days || 0);
+
+      this.taskHealthChart = new Chart(canvas, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Target Interval (Days)",
+              data: targetData,
+              backgroundColor: "rgba(59, 130, 246, 0.7)", // blue-500
+              borderColor: "#3b82f6",
+              borderWidth: 1,
+              borderRadius: 4,
+            },
+            {
+              label: "Actual Average (Days)",
+              data: actualData,
+              backgroundColor: actualData.map((val, i) =>
+                val > targetData[i] ? "rgba(239, 68, 68, 0.7)" : "rgba(34, 197, 94, 0.7)"
+              ), // red-500 if overdue, else green-500
+              borderColor: actualData.map((val, i) =>
+                val > targetData[i] ? "#ef4444" : "#22c55e"
+              ),
+              borderWidth: 1,
+              borderRadius: 4,
+            }
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                afterLabel: (context) => {
+                  if (context.datasetIndex === 1) { // Actual average
+                    const stat = validStats[context.dataIndex];
+                    return `Overdue completions: ${stat.overdue_count}`;
+                  }
+                  return null;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Days"
+              }
             },
           },
         },
