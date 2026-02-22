@@ -38,6 +38,7 @@ npm-debug.log*
 src/routeTree.gen.ts
 public/styles.css
 public/alpine.js
+public/confetti.js
 
 # Bun
 bun.lock

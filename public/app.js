@@ -507,6 +507,15 @@ function app() {
         });
         if (!res.ok) throw new Error("Failed to complete task");
         this.showToast("Task marked as done!");
+
+        // Fireworks animation
+        if (typeof window.confetti === 'function') {
+          window.confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
       } catch {
         this.showToast("Failed to complete task", "error");
       }
