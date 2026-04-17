@@ -511,11 +511,11 @@ function app() {
         this.showToast("Task marked as done!");
 
         // Fireworks animation
-        if (typeof window.confetti === 'function') {
+        if (typeof window.confetti === "function") {
           window.confetti({
             particleCount: 100,
             spread: 70,
-            origin: { y: 0.6 }
+            origin: { y: 0.6 },
           });
         }
       } catch {
@@ -848,14 +848,16 @@ function app() {
       }
 
       // Filter tasks that have at least one completion (actual_average_days is not null)
-      const validStats = this.taskHealthStats.filter(s => s.actual_average_days !== null);
+      const validStats = this.taskHealthStats.filter(
+        (s) => s.actual_average_days !== null,
+      );
       if (validStats.length === 0) return;
 
-      const labels = validStats.map(s => s.task_name);
+      const labels = validStats.map((s) => s.task_name);
 
-      const targetData = validStats.map(s => s.target_interval_days);
+      const targetData = validStats.map((s) => s.target_interval_days);
       // Fallback actual average to 0 if it's null (though we filtered them above)
-      const actualData = validStats.map(s => s.actual_average_days || 0);
+      const actualData = validStats.map((s) => s.actual_average_days || 0);
 
       this.taskHealthChart = new Chart(canvas, {
         type: "bar",
@@ -874,14 +876,16 @@ function app() {
               label: "Actual Average (Days)",
               data: actualData,
               backgroundColor: actualData.map((val, i) =>
-                val > targetData[i] ? "rgba(239, 68, 68, 0.7)" : "rgba(34, 197, 94, 0.7)"
+                val > targetData[i]
+                  ? "rgba(239, 68, 68, 0.7)"
+                  : "rgba(34, 197, 94, 0.7)",
               ), // red-500 if overdue, else green-500
               borderColor: actualData.map((val, i) =>
-                val > targetData[i] ? "#ef4444" : "#22c55e"
+                val > targetData[i] ? "#ef4444" : "#22c55e",
               ),
               borderWidth: 1,
               borderRadius: 4,
-            }
+            },
           ],
         },
         options: {
@@ -891,22 +895,23 @@ function app() {
             tooltip: {
               callbacks: {
                 afterLabel: (context) => {
-                  if (context.datasetIndex === 1) { // Actual average
+                  if (context.datasetIndex === 1) {
+                    // Actual average
                     const stat = validStats[context.dataIndex];
                     return `Overdue completions: ${stat.overdue_count}`;
                   }
                   return null;
-                }
-              }
-            }
+                },
+              },
+            },
           },
           scales: {
             y: {
               beginAtZero: true,
               title: {
                 display: true,
-                text: "Days"
-              }
+                text: "Days",
+              },
             },
           },
         },

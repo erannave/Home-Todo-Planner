@@ -191,12 +191,19 @@ if (!existingUser) {
   );
 
   // --- Generate History for the last 60 days ---
-  const insertCompletion = db.prepare("INSERT INTO task_completions (task_id, completed_by_member_id, completed_at, notes) VALUES (?, ?, ?, ?)");
+  const insertCompletion = db.prepare(
+    "INSERT INTO task_completions (task_id, completed_by_member_id, completed_at, notes) VALUES (?, ?, ?, ?)",
+  );
 
   // Clean kitchen counters (Interval 1) - actually done every ~1.5 days on average (unhealthy)
   let d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
   while (d < yesterday) {
-    insertCompletion.run(t1.lastInsertRowid, members[0].id, d.toISOString(), null);
+    insertCompletion.run(
+      t1.lastInsertRowid,
+      members[0].id,
+      d.toISOString(),
+      null,
+    );
     d = new Date(d.getTime() + (Math.random() * 2 + 0.5) * 24 * 60 * 60 * 1000); // 0.5 to 2.5 days
   }
 
@@ -210,14 +217,25 @@ if (!existingUser) {
   // Clean bathroom (Interval 7) - done every 10 days (unhealthy)
   d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
   while (d < weekAgo) {
-    insertCompletion.run(t3.lastInsertRowid, members[1].id, d.toISOString(), "Hated it");
+    insertCompletion.run(
+      t3.lastInsertRowid,
+      members[1].id,
+      d.toISOString(),
+      "Hated it",
+    );
     d = new Date(d.getTime() + (Math.random() * 4 + 8) * 24 * 60 * 60 * 1000); // 8 to 12 days
   }
 
   // Mow the lawn (Interval 14) - done every 12 days (healthy)
   d = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-  while (d < yesterday) { // completed yesterday maybe?
-    insertCompletion.run(t4.lastInsertRowid, members[2].id, d.toISOString(), "Looks good");
+  while (d < yesterday) {
+    // completed yesterday maybe?
+    insertCompletion.run(
+      t4.lastInsertRowid,
+      members[2].id,
+      d.toISOString(),
+      "Looks good",
+    );
     d = new Date(d.getTime() + (Math.random() * 4 + 10) * 24 * 60 * 60 * 1000); // 10 to 14 days
   }
 

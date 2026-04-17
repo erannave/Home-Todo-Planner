@@ -40,7 +40,11 @@ export function getWeeklyStats(
 
   // Start of current week (Sunday) in UTC
   const currentWeekStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dayOfWeek),
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - dayOfWeek,
+    ),
   );
 
   // Go back (weeks - 1) weeks to get the start date
