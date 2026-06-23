@@ -127,13 +127,23 @@
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <h2 class="text-xl font-bold text-slate-900">Dashboard</h2>
-            <button @click="openTaskModal()"
-              class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-              </svg>
-              New Task
-            </button>
+            <div class="flex items-center gap-2">
+              <button @click="openPostponeModal()"
+                class="bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                Postpone
+              </button>
+              <button @click="openTaskModal()"
+                class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                New Task
+              </button>
+            </div>
           </div>
 
           <!-- Stats -->
@@ -949,6 +959,45 @@
             <button type="submit"
               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
               x-text="editingTaskId ? 'Save Changes' : 'Create Task'"></button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Postpone Modal -->
+    <div x-show="showPostponeModal"
+      @keydown.escape.window="showPostponeModal && (showPostponeModal = false)" role="dialog" aria-modal="true"
+      aria-labelledby="postpone-modal-title" x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      @click="showPostponeModal = false">
+      <div @click.stop x-show="showPostponeModal" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 scale-100"
+        x-transition:leave-end="opacity-0 scale-95" class="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col"
+        style="max-height: calc(100vh - 2rem);">
+        <div class="flex items-center justify-between p-4 border-b shrink-0">
+          <h3 id="postpone-modal-title" class="text-lg font-semibold">Postpone all tasks</h3>
+          <button @click="showPostponeModal = false" aria-label="Close modal"
+            class="text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <form @submit.prevent="postponeAllTasks()" class="p-4 space-y-4" style="overflow-y: auto;">
+          <div>
+            <label for="postpone-days" class="block text-sm font-medium text-slate-700 mb-1">Days to postpone</label>
+            <input id="postpone-days" type="number" x-model.number="postponeDays" required min="1"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            <p class="mt-1.5 text-sm text-slate-500">Move every recurring task's due date forward by this many days.</p>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" @click="showPostponeModal = false"
+              class="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">Cancel</button>
+            <button type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">Postpone</button>
           </div>
         </form>
       </div>

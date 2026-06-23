@@ -41,6 +41,8 @@ function app() {
     showTaskModal: false,
     showCategoryModal: false,
     showMemberModal: false,
+    showPostponeModal: false,
+    postponeDays: 7,
     editingTaskId: null,
     editingCategoryId: null,
     editingMemberId: null,
@@ -585,6 +587,34 @@ function app() {
         this.showTaskModal = false;
       } catch {
         this.showToast("Failed to save task", "error");
+      }
+      await this.loadData();
+    },
+
+    openPostponeModal() {
+      this.postponeDays = 7;
+      this.showPostponeModal = true;
+    },
+
+    async postponeAllTasks() {
+      const days = Number(this.postponeDays);
+      if (!Number.isInteger(days) || days < 1) {
+        this.showToast("Enter a whole number of days (1 or more)", "error");
+        return;
+      }
+      try {
+        const res = await fetch("/api/tasks/postpone-all", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ days }),
+        });
+        if (!res.ok) throw new Error("Failed to postpone tasks");
+        this.showToast(
+          `Postponed all tasks by ${days} day${days === 1 ? "" : "s"}`,
+        );
+        this.showPostponeModal = false;
+      } catch {
+        this.showToast("Failed to postpone tasks", "error");
       }
       await this.loadData();
     },

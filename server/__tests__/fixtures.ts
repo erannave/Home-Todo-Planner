@@ -80,6 +80,7 @@ export function createTestTask(
     category_id?: number | null;
     assigned_member_id?: number | null;
     last_completed_at?: string | null;
+    postpone_days?: number;
   } = {},
 ): number {
   const {
@@ -91,11 +92,12 @@ export function createTestTask(
     category_id = null,
     assigned_member_id = null,
     last_completed_at = null,
+    postpone_days = 0,
   } = options;
 
   const result = db.run(
-    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id, last_completed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id, last_completed_at, postpone_days)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       userId,
       name,
@@ -106,6 +108,7 @@ export function createTestTask(
       category_id,
       assigned_member_id,
       last_completed_at,
+      postpone_days,
     ],
   );
   return Number(result.lastInsertRowid);

@@ -51,6 +51,7 @@ import {
   deleteTask,
   getTaskById,
   getTasksForUser,
+  postponeAllRecurringTasks,
   updateTask,
   validateTaskData,
 } from "./services/task.service";
@@ -175,6 +176,19 @@ app.post("/api/tasks", async (c) => {
 
   const id = createTask(userId, data);
   return c.json({ id });
+});
+
+app.post("/api/tasks/postpone-all", async (c) => {
+  const userId = getUserIdFromSession(c);
+  if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+  const { days } = await c.req.json();
+  if (!Number.isInteger(days) || days < 1) {
+    return c.json({ error: "days must be an integer >= 1" }, 400);
+  }
+
+  const count = postponeAllRecurringTasks(userId, days);
+  return c.json({ success: true, count });
 });
 
 app.put("/api/tasks/:id", async (c) => {

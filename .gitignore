@@ -45,3 +45,4 @@ bun.lock
 
 #Playwright
 .playwright-mcp
+.playwright-cli

@@ -13,6 +13,7 @@ export interface TaskRow {
   assigned_member_id: number | null;
   assigned_member_name: string | null;
   last_completed_at: string | null;
+  postpone_days: number;
   created_at: string;
 }
 

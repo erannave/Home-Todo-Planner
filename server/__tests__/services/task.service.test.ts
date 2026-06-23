@@ -6,9 +6,11 @@ import {
   deleteTask,
   getTaskById,
   getTasksForUser,
+  postponeAllRecurringTasks,
   updateTask,
   validateTaskData,
 } from "../../services/task.service";
+import { normalizeToDay } from "../../utils/date";
 import { createTestTask, createTestUser, daysAgo } from "../fixtures";
 import { createTestDb } from "../setup";
 
@@ -149,6 +151,63 @@ describe("calculateTaskStatus", () => {
       );
 
       expect(result.status).toBe("pending");
+    });
+
+    test("postpone_days shifts an overdue completed task back to done", () => {
+      // Completed 14 days ago, interval 7 → normally overdue. Postpone +10 pushes
+      // next due to completed + 17 days = 2024-03-18, which is after today.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-01T00:00:00",
+          interval_days: 7,
+          due_date: null,
+          postpone_days: 10,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("done");
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-18T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone_days shifts a never-completed task to done until the shifted date", () => {
+      // Never completed → normally overdue today. Postpone +5 pushes next due to
+      // today + 5 = 2024-03-20, which is in the future.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: null,
+          interval_days: 7,
+          due_date: null,
+          postpone_days: 5,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("done");
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-20T00:00:00").getTime(),
+      );
+    });
+
+    test("never-completed task is still overdue when postpone has elapsed", () => {
+      // postpone_days 0 → behaves as before: overdue, due today.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: null,
+          interval_days: 7,
+          due_date: null,
+          postpone_days: 0,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("overdue");
+      expect(result.nextDue.getTime()).toBe(today.getTime());
     });
   });
 });
@@ -406,5 +465,74 @@ describe("completeTask", () => {
       .get(taskId);
 
     expect(task?.last_completed_at).toBe(customDate);
+  });
+
+  test("resets postpone_days to 0 on completion", () => {
+    const db = createTestDb();
+    const userId = createTestUser(db);
+    const taskId = createTestTask(db, userId, { postpone_days: 10 });
+
+    completeTask(taskId, {}, db);
+
+    const task = db
+      .query<{ postpone_days: number }, [number]>(
+        "SELECT postpone_days FROM tasks WHERE id = ?",
+      )
+      .get(taskId);
+
+    expect(task?.postpone_days).toBe(0);
+  });
+});
+
+describe("postponeAllRecurringTasks", () => {
+  test("increments postpone_days only for recurring tasks of that user", () => {
+    const db = createTestDb();
+    const userId = createTestUser(db, "owner");
+    const otherUserId = createTestUser(db, "other");
+
+    const recurringId = createTestTask(db, userId, {
+      name: "Recurring",
+      is_recurring: 1,
+    });
+    const nonRecurringId = createTestTask(db, userId, {
+      name: "One-time",
+      is_recurring: 0,
+    });
+    const otherUserTaskId = createTestTask(db, otherUserId, {
+      name: "Other user recurring",
+      is_recurring: 1,
+    });
+
+    const count = postponeAllRecurringTasks(userId, 7, db);
+
+    expect(count).toBe(1);
+
+    const getPostpone = (id: number) =>
+      db
+        .query<{ postpone_days: number }, [number]>(
+          "SELECT postpone_days FROM tasks WHERE id = ?",
+        )
+        .get(id)?.postpone_days;
+
+    expect(getPostpone(recurringId)).toBe(7);
+    expect(getPostpone(nonRecurringId)).toBe(0);
+    expect(getPostpone(otherUserTaskId)).toBe(0);
+  });
+
+  test("is cumulative across calls", () => {
+    const db = createTestDb();
+    const userId = createTestUser(db);
+    const taskId = createTestTask(db, userId, { is_recurring: 1 });
+
+    postponeAllRecurringTasks(userId, 7, db);
+    postponeAllRecurringTasks(userId, 3, db);
+
+    const task = db
+      .query<{ postpone_days: number }, [number]>(
+        "SELECT postpone_days FROM tasks WHERE id = ?",
+      )
+      .get(taskId);
+
+    expect(task?.postpone_days).toBe(10);
   });
 });

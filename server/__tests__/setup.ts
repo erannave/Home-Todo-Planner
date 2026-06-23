@@ -50,6 +50,7 @@ export function createTestDb(): Database {
       category_id INTEGER,
       assigned_member_id INTEGER,
       last_completed_at TEXT,
+      postpone_days INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,

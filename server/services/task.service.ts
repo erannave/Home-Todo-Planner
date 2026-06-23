@@ -9,6 +9,7 @@ export interface TaskStatusInput {
   last_completed_at: string | null;
   interval_days: number | null;
   due_date: string | null;
+  postpone_days?: number;
 }
 
 export interface TaskStatusResult {
@@ -48,13 +49,19 @@ export function calculateTaskStatus(
   }
 
   // Recurring task status logic
+  const postponeDays = task.postpone_days ?? 0;
   if (!task.last_completed_at) {
-    status = "overdue";
-    nextDue = today;
+    nextDue = new Date(today);
+    nextDue.setDate(nextDue.getDate() + postponeDays);
+
+    // Postponed into the future means not due yet; otherwise overdue as before.
+    status = normalizeToDay(nextDue) > today ? "done" : "overdue";
   } else {
     const lastCompleted = new Date(task.last_completed_at);
     nextDue = new Date(lastCompleted);
-    nextDue.setDate(nextDue.getDate() + (task.interval_days ?? 0));
+    nextDue.setDate(
+      nextDue.getDate() + (task.interval_days ?? 0) + postponeDays,
+    );
 
     const nextDueDay = normalizeToDay(nextDue);
 
@@ -103,7 +110,7 @@ export function getTasksForUser(
         t.id, t.name, t.notes, t.interval_days, t.is_recurring, t.due_date,
         t.category_id, c.name as category_name, c.color as category_color,
         t.assigned_member_id, m.name as assigned_member_name,
-        t.last_completed_at, t.created_at
+        t.last_completed_at, t.postpone_days, t.created_at
       FROM tasks t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN household_members m ON t.assigned_member_id = m.id
@@ -225,8 +232,24 @@ export function completeTask(
     ],
   );
 
-  db.run("UPDATE tasks SET last_completed_at = ? WHERE id = ?", [
-    completionDate,
-    taskId,
-  ]);
+  db.run(
+    "UPDATE tasks SET last_completed_at = ?, postpone_days = 0 WHERE id = ?",
+    [completionDate, taskId],
+  );
+}
+
+/**
+ * Push the due date of every recurring task for a user forward by `days`.
+ * Cumulative: adds to any existing offset. Returns the number of tasks updated.
+ */
+export function postponeAllRecurringTasks(
+  userId: number,
+  days: number,
+  db: Database = defaultDb,
+): number {
+  const result = db.run(
+    "UPDATE tasks SET postpone_days = postpone_days + ? WHERE user_id = ? AND is_recurring = 1",
+    [days, userId],
+  );
+  return result.changes;
 }
