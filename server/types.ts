@@ -15,6 +15,8 @@ export interface TaskRow {
   last_completed_at: string | null;
   postpone_days: number;
   created_at: string;
+  recurrence_type: string;
+  recurrence_day: number | null;
 }
 
 export interface HistoryRow {

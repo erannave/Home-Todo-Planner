@@ -46,6 +46,9 @@ db.exec(`
     category_id INTEGER,
     assigned_member_id INTEGER,
     last_completed_at TEXT,
+    postpone_days INTEGER NOT NULL DEFAULT 0,
+    recurrence_type TEXT NOT NULL DEFAULT 'interval',
+    recurrence_day INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
@@ -188,6 +191,26 @@ if (!existingUser) {
   const t5 = db.run(
     "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id) VALUES (?, ?, ?, ?, ?, ?)",
     [userId, "Take out trash", null, 2, 1, kitchenId],
+  );
+
+  // Day-anchored recurring tasks
+  db.run(
+    "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, category_id, recurrence_type, recurrence_day) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    [
+      userId,
+      "Recycling pickup",
+      "Wheel the bin out Monday morning",
+      1,
+      1,
+      kitchenId,
+      "weekly",
+      1,
+    ],
+  );
+
+  db.run(
+    "INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, recurrence_type, recurrence_day) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [userId, "Pay rent", "Due on the 1st", 1, 1, "monthly", 1],
   );
 
   // --- Generate History for the last 60 days ---

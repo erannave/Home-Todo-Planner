@@ -1,7 +1,15 @@
 import type { Database } from "bun:sqlite";
 import { db as defaultDb } from "../db";
 import type { TaskRow, TaskStatus, TaskWithStatus } from "../types";
-import { normalizeToDay } from "../utils/date";
+import {
+  addDays,
+  addMonthsClamped,
+  monthlyDateInMonth,
+  nearestMonthlyDay,
+  nearestWeekday,
+  nextWeekdayOnOrAfter,
+  normalizeToDay,
+} from "../utils/date";
 
 // Pure function for calculating task status - highly testable
 export interface TaskStatusInput {
@@ -10,6 +18,8 @@ export interface TaskStatusInput {
   interval_days: number | null;
   due_date: string | null;
   postpone_days?: number;
+  recurrence_type: string;
+  recurrence_day: number | null;
 }
 
 export interface TaskStatusResult {
@@ -50,6 +60,68 @@ export function calculateTaskStatus(
 
   // Recurring task status logic
   const postponeDays = task.postpone_days ?? 0;
+
+  if (task.recurrence_type === "weekly" || task.recurrence_type === "monthly") {
+    const n = task.interval_days ?? 1;
+    const day = task.recurrence_day ?? 0;
+
+    if (!task.last_completed_at) {
+      // New day-anchored tasks become due at the next upcoming scheduled day.
+      if (task.recurrence_type === "weekly") {
+        nextDue = nextWeekdayOnOrAfter(today, day);
+      } else {
+        const thisMonth = monthlyDateInMonth(
+          today.getFullYear(),
+          today.getMonth(),
+          day,
+        );
+        nextDue =
+          thisMonth >= today
+            ? thisMonth
+            : monthlyDateInMonth(
+                today.getFullYear(),
+                today.getMonth() + 1,
+                day,
+              );
+      }
+    } else {
+      const lastCompletedDay = normalizeToDay(new Date(task.last_completed_at));
+      if (task.recurrence_type === "weekly") {
+        const anchor = nearestWeekday(lastCompletedDay, day);
+        nextDue = addDays(anchor, 7 * n);
+      } else {
+        const anchor = nearestMonthlyDay(lastCompletedDay, day);
+        nextDue = addMonthsClamped(anchor, n, day);
+      }
+    }
+
+    if (postponeDays > 0) {
+      // Fixed-day tasks must stay on their weekday / day-of-month. Postpone moves
+      // them only by whole periods, and only when the next occurrence falls inside
+      // the window [today, today + postponeDays) — an occurrence exactly on
+      // today + postponeDays is "back" and is not moved.
+      const windowEnd = addDays(today, postponeDays);
+      while (normalizeToDay(nextDue) < windowEnd) {
+        nextDue =
+          task.recurrence_type === "weekly"
+            ? addDays(nextDue, 7 * n)
+            : addMonthsClamped(nextDue, n, day);
+      }
+    }
+    const nextDueDay = normalizeToDay(nextDue);
+
+    if (nextDueDay > today) {
+      status = "done";
+    } else if (nextDueDay.getTime() === today.getTime()) {
+      status = "pending";
+    } else {
+      status = "overdue";
+    }
+
+    return { status, nextDue };
+  }
+
+  // Interval recurrence (default)
   if (!task.last_completed_at) {
     nextDue = new Date(today);
     nextDue.setDate(nextDue.getDate() + postponeDays);
@@ -88,12 +160,48 @@ export function validateTaskData(data: {
   name?: string;
   is_recurring?: boolean;
   interval_days?: number;
+  recurrence_type?: string;
+  recurrence_day?: number | null;
 }): TaskValidation {
   if (!data.name) {
     return { valid: false, error: "Name is required" };
   }
-  if (data.is_recurring && !data.interval_days) {
-    return { valid: false, error: "Interval is required for recurring tasks" };
+  if (data.is_recurring) {
+    const recurrenceType = data.recurrence_type ?? "interval";
+
+    if (recurrenceType === "interval") {
+      if (!data.interval_days) {
+        return {
+          valid: false,
+          error: "Interval is required for recurring tasks",
+        };
+      }
+    } else {
+      // weekly / monthly: interval_days is the period multiplier N (>= 1)
+      if (!data.interval_days || data.interval_days < 1) {
+        return {
+          valid: false,
+          error: "Repeat count must be at least 1",
+        };
+      }
+      if (recurrenceType === "weekly") {
+        const day = data.recurrence_day;
+        if (day == null || day < 0 || day > 6) {
+          return {
+            valid: false,
+            error: "A valid weekday is required for weekly tasks",
+          };
+        }
+      } else if (recurrenceType === "monthly") {
+        const day = data.recurrence_day;
+        if (day == null || day < 1 || day > 31) {
+          return {
+            valid: false,
+            error: "A valid day of month is required for monthly tasks",
+          };
+        }
+      }
+    }
   }
   return { valid: true };
 }
@@ -110,7 +218,8 @@ export function getTasksForUser(
         t.id, t.name, t.notes, t.interval_days, t.is_recurring, t.due_date,
         t.category_id, c.name as category_name, c.color as category_color,
         t.assigned_member_id, m.name as assigned_member_name,
-        t.last_completed_at, t.postpone_days, t.created_at
+        t.last_completed_at, t.postpone_days, t.created_at,
+        t.recurrence_type, t.recurrence_day
       FROM tasks t
       LEFT JOIN categories c ON t.category_id = c.id
       LEFT JOIN household_members m ON t.assigned_member_id = m.id
@@ -147,6 +256,8 @@ export interface CreateTaskData {
   due_date?: string | null;
   category_id?: number | null;
   assigned_member_id?: number | null;
+  recurrence_type?: string;
+  recurrence_day?: number | null;
 }
 
 export function createTask(
@@ -155,9 +266,13 @@ export function createTask(
   db: Database = defaultDb,
 ): number {
   const isRecurring = data.is_recurring ?? true;
+  const { recurrenceType, recurrenceDay } = resolveRecurrence(
+    isRecurring,
+    data,
+  );
   const result = db.run(
-    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id, recurrence_type, recurrence_day)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       userId,
       data.name,
@@ -167,6 +282,8 @@ export function createTask(
       isRecurring ? null : (data.due_date ?? null),
       data.category_id ?? null,
       data.assigned_member_id ?? null,
+      recurrenceType,
+      recurrenceDay,
     ],
   );
 
@@ -180,9 +297,13 @@ export function updateTask(
   db: Database = defaultDb,
 ): void {
   const isRecurring = data.is_recurring ?? true;
+  const { recurrenceType, recurrenceDay } = resolveRecurrence(
+    isRecurring,
+    data,
+  );
   db.run(
     `UPDATE tasks
-     SET name = ?, notes = ?, interval_days = ?, is_recurring = ?, due_date = ?, category_id = ?, assigned_member_id = ?
+     SET name = ?, notes = ?, interval_days = ?, is_recurring = ?, due_date = ?, category_id = ?, assigned_member_id = ?, recurrence_type = ?, recurrence_day = ?
      WHERE id = ? AND user_id = ?`,
     [
       data.name,
@@ -192,10 +313,28 @@ export function updateTask(
       isRecurring ? null : (data.due_date ?? null),
       data.category_id ?? null,
       data.assigned_member_id ?? null,
+      recurrenceType,
+      recurrenceDay,
       taskId,
       userId,
     ],
   );
+}
+
+/**
+ * Normalize recurrence fields for persistence:
+ * - non-recurring or interval tasks store recurrence_type='interval', recurrence_day=null
+ * - weekly/monthly tasks keep their type and day
+ */
+function resolveRecurrence(
+  isRecurring: boolean,
+  data: { recurrence_type?: string; recurrence_day?: number | null },
+): { recurrenceType: string; recurrenceDay: number | null } {
+  const type = isRecurring ? (data.recurrence_type ?? "interval") : "interval";
+  if (type === "weekly" || type === "monthly") {
+    return { recurrenceType: type, recurrenceDay: data.recurrence_day ?? null };
+  }
+  return { recurrenceType: "interval", recurrenceDay: null };
 }
 
 export function deleteTask(

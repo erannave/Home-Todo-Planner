@@ -15,7 +15,7 @@ import { createTestTask, createTestUser, daysAgo } from "../fixtures";
 import { createTestDb } from "../setup";
 
 describe("calculateTaskStatus", () => {
-  // Use a fixed "today" for deterministic tests
+  // Use a fixed "today" for deterministic tests (2024-03-15 is a Friday)
   const today = new Date("2024-03-15T00:00:00");
 
   describe("non-recurring tasks", () => {
@@ -26,6 +26,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: null,
           interval_days: null,
           due_date: null,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -41,6 +43,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: null,
           interval_days: null,
           due_date: "2024-03-15T00:00:00",
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -55,6 +59,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: null,
           interval_days: null,
           due_date: "2024-03-20T00:00:00",
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -69,6 +75,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: null,
           interval_days: null,
           due_date: "2024-03-14T00:00:00",
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -77,7 +85,7 @@ describe("calculateTaskStatus", () => {
     });
   });
 
-  describe("recurring tasks", () => {
+  describe("recurring tasks (interval)", () => {
     test("never completed returns overdue status", () => {
       const result = calculateTaskStatus(
         {
@@ -85,6 +93,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: null,
           interval_days: 7,
           due_date: null,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -101,6 +111,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: "2024-03-14T00:00:00",
           interval_days: 7,
           due_date: null,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -116,6 +128,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: "2024-03-08T00:00:00",
           interval_days: 7,
           due_date: null,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -131,6 +145,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: "2024-03-01T00:00:00",
           interval_days: 7,
           due_date: null,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -146,6 +162,8 @@ describe("calculateTaskStatus", () => {
           last_completed_at: "2024-03-12T00:00:00",
           interval_days: 3,
           due_date: null,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -163,6 +181,8 @@ describe("calculateTaskStatus", () => {
           interval_days: 7,
           due_date: null,
           postpone_days: 10,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -183,6 +203,8 @@ describe("calculateTaskStatus", () => {
           interval_days: 7,
           due_date: null,
           postpone_days: 5,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
@@ -202,12 +224,387 @@ describe("calculateTaskStatus", () => {
           interval_days: 7,
           due_date: null,
           postpone_days: 0,
+          recurrence_type: "interval",
+          recurrence_day: null,
         },
         today,
       );
 
       expect(result.status).toBe("overdue");
       expect(result.nextDue.getTime()).toBe(today.getTime());
+    });
+  });
+
+  describe("recurring tasks (weekly)", () => {
+    // today = Fri 2024-03-15. Weekdays: 0=Sun .. 5=Fri .. 6=Sat
+    test("never completed: due on the next occurrence of the weekday", () => {
+      // Next Monday (day 1) on/after Fri 2024-03-15 is 2024-03-18
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: null,
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("done");
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-18T00:00:00").getTime(),
+      );
+    });
+
+    test("never completed: due today when today is the weekday → pending", () => {
+      // Friday = day 5, today is Friday
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: null,
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "weekly",
+          recurrence_day: 5,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("pending");
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-15T00:00:00").getTime(),
+      );
+    });
+
+    test("completed a day early (Sat) snaps to that week's Monday then +7", () => {
+      // Weekly on Monday (day 1). Completed Sat 2024-03-16 (the day before the
+      // Monday). nearestWeekday → Mon 2024-03-18; +7 → Mon 2024-03-25.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-16T12:00:00",
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-25T00:00:00").getTime(),
+      );
+    });
+
+    test("completed a day late (Tue) snaps to the same Monday then +7 (skips the week)", () => {
+      // Weekly on Monday. Completed Tue 2024-03-19, one day after Mon 2024-03-18.
+      // nearestWeekday → Mon 2024-03-18; +7 → Mon 2024-03-25 (same as the early case).
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-19T12:00:00",
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-25T00:00:00").getTime(),
+      );
+    });
+
+    test("multiplier N=2: next is nearest weekday + 14", () => {
+      // Every 2 weeks on Monday. Completed Mon 2024-03-18; +14 → Mon 2024-04-01.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-18T00:00:00",
+          interval_days: 2,
+          due_date: null,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-04-01T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone advances a weekly task one whole week, staying on the weekday", () => {
+      // Weekly on Monday. Completed Mon 2024-03-11 → next Mon 2024-03-18, which is
+      // inside the window [03-15, 03-20). Postpone advances one full week to the
+      // next Monday 2024-03-25 (NOT a raw +5 → 03-23).
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-11T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          postpone_days: 5,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("done");
+      expect(normalizeToDay(result.nextDue).getDay()).toBe(1); // still a Monday
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-25T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone leaves a weekly task untouched when its occurrence is past the window", () => {
+      // Next Mon 2024-03-18 is outside the window [03-15, 03-17). Unchanged.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-11T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          postpone_days: 2,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-18T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone with a large window skips multiple whole weeks", () => {
+      // Next Mon 2024-03-18 with a 30-day window [03-15, 04-14). Advances week by
+      // week (03-25, 04-01, 04-08) until 2024-04-15 clears the window — still Monday.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-11T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          postpone_days: 30,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getDay()).toBe(1); // still a Monday
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-04-15T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone window is exclusive: an occurrence exactly on today + X stays put", () => {
+      // Next Mon 2024-03-18 with postpone 3 → window end is exactly 03-18. The
+      // occurrence on the boundary is "back" and is not moved.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-11T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          postpone_days: 3,
+          recurrence_type: "weekly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-18T00:00:00").getTime(),
+      );
+    });
+  });
+
+  describe("recurring tasks (monthly)", () => {
+    test("never completed: due on this month's day if on/after today", () => {
+      // The 20th of March is after Fri the 15th → due 2024-03-20.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: null,
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "monthly",
+          recurrence_day: 20,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("done");
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-20T00:00:00").getTime(),
+      );
+    });
+
+    test("never completed: rolls to next month when this month's day has passed", () => {
+      // The 1st of March is before the 15th → due 2024-04-01.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: null,
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "monthly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-04-01T00:00:00").getTime(),
+      );
+    });
+
+    test("completed near day-15: next is day-15 of next month", () => {
+      // Monthly on the 15th. Completed 2024-03-15 → next 2024-04-15.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-15T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "monthly",
+          recurrence_day: 15,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-04-15T00:00:00").getTime(),
+      );
+    });
+
+    test("day-31 clamps to last day of a short month (Feb)", () => {
+      // Monthly on the 31st. Completed Jan 31 2024 → next Feb, clamped to Feb 29
+      // (2024 is a leap year).
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-01-31T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "monthly",
+          recurrence_day: 31,
+        },
+        new Date("2024-02-10T00:00:00"),
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-02-29T00:00:00").getTime(),
+      );
+    });
+
+    test("day-31 clamps to 30 in a 30-day month", () => {
+      // Monthly on the 31st. Completed Mar 31 2024 → next Apr, clamped to Apr 30.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-31T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          recurrence_type: "monthly",
+          recurrence_day: 31,
+        },
+        new Date("2024-04-05T00:00:00"),
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-04-30T00:00:00").getTime(),
+      );
+    });
+
+    test("multiplier N=3: advances three months", () => {
+      // Every 3 months on the 1st. Completed 2024-03-01 → next 2024-06-01.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-03-01T00:00:00",
+          interval_days: 3,
+          due_date: null,
+          recurrence_type: "monthly",
+          recurrence_day: 1,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-06-01T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone advances a monthly task one whole month, staying on the day-of-month", () => {
+      // Monthly on the 20th. Completed 2024-02-20 → next 2024-03-20, inside the
+      // window [03-15, 03-25). Postpone advances one full month to 2024-04-20
+      // (NOT a raw +10 → 03-30).
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-02-20T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          postpone_days: 10,
+          recurrence_type: "monthly",
+          recurrence_day: 20,
+        },
+        today,
+      );
+
+      expect(result.status).toBe("done");
+      expect(normalizeToDay(result.nextDue).getDate()).toBe(20); // still the 20th
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-04-20T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone leaves a monthly task untouched when its occurrence is past the window", () => {
+      // Next 2024-03-20 is outside the window [03-15, 03-18). Unchanged.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-02-20T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          postpone_days: 3,
+          recurrence_type: "monthly",
+          recurrence_day: 20,
+        },
+        today,
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-20T00:00:00").getTime(),
+      );
+    });
+
+    test("postpone keeps day-31 clamping when advancing a whole month", () => {
+      // Monthly on the 31st. Completed Jan 31 → next Feb 29 (clamped, leap year),
+      // inside the window [01-20, 03-05). Advancing one month re-clamps day 31 to
+      // March's length → 2024-03-31, not Feb 29 + 1 month of raw days.
+      const result = calculateTaskStatus(
+        {
+          is_recurring: 1,
+          last_completed_at: "2024-01-31T00:00:00",
+          interval_days: 1,
+          due_date: null,
+          postpone_days: 45,
+          recurrence_type: "monthly",
+          recurrence_day: 31,
+        },
+        new Date("2024-01-20T00:00:00"),
+      );
+
+      expect(normalizeToDay(result.nextDue).getTime()).toBe(
+        new Date("2024-03-31T00:00:00").getTime(),
+      );
     });
   });
 });
@@ -260,6 +657,84 @@ describe("validateTaskData", () => {
 
     expect(result.valid).toBe(false);
     expect(result.error).toBe("Interval is required for recurring tasks");
+  });
+
+  test("valid weekly task passes", () => {
+    const result = validateTaskData({
+      name: "Trash",
+      is_recurring: true,
+      recurrence_type: "weekly",
+      recurrence_day: 1,
+      interval_days: 1,
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
+  test("weekly task without a valid weekday fails", () => {
+    const result = validateTaskData({
+      name: "Trash",
+      is_recurring: true,
+      recurrence_type: "weekly",
+      recurrence_day: null,
+      interval_days: 1,
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("A valid weekday is required for weekly tasks");
+  });
+
+  test("weekly task with out-of-range weekday fails", () => {
+    const result = validateTaskData({
+      name: "Trash",
+      is_recurring: true,
+      recurrence_type: "weekly",
+      recurrence_day: 7,
+      interval_days: 1,
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("A valid weekday is required for weekly tasks");
+  });
+
+  test("valid monthly task passes", () => {
+    const result = validateTaskData({
+      name: "Rent",
+      is_recurring: true,
+      recurrence_type: "monthly",
+      recurrence_day: 1,
+      interval_days: 1,
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
+  test("monthly task with day out of 1..31 fails", () => {
+    const result = validateTaskData({
+      name: "Rent",
+      is_recurring: true,
+      recurrence_type: "monthly",
+      recurrence_day: 32,
+      interval_days: 1,
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe(
+      "A valid day of month is required for monthly tasks",
+    );
+  });
+
+  test("day-anchored task with N < 1 fails", () => {
+    const result = validateTaskData({
+      name: "Trash",
+      is_recurring: true,
+      recurrence_type: "weekly",
+      recurrence_day: 1,
+      interval_days: 0,
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Repeat count must be at least 1");
   });
 });
 

@@ -49,6 +49,8 @@ db.exec(`
     assigned_member_id INTEGER,
     last_completed_at TEXT,
     postpone_days INTEGER NOT NULL DEFAULT 0,
+    recurrence_type TEXT NOT NULL DEFAULT 'interval',
+    recurrence_day INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
@@ -71,6 +73,20 @@ try {
   db.exec(
     "ALTER TABLE tasks ADD COLUMN postpone_days INTEGER NOT NULL DEFAULT 0;",
   );
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec(
+    "ALTER TABLE tasks ADD COLUMN recurrence_type TEXT NOT NULL DEFAULT 'interval';",
+  );
+} catch {
+  // column already exists
+}
+
+try {
+  db.exec("ALTER TABLE tasks ADD COLUMN recurrence_day INTEGER;");
 } catch {
   // column already exists
 }

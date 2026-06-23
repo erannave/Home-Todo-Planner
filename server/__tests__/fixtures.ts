@@ -81,6 +81,8 @@ export function createTestTask(
     assigned_member_id?: number | null;
     last_completed_at?: string | null;
     postpone_days?: number;
+    recurrence_type?: string;
+    recurrence_day?: number | null;
   } = {},
 ): number {
   const {
@@ -93,11 +95,13 @@ export function createTestTask(
     assigned_member_id = null,
     last_completed_at = null,
     postpone_days = 0,
+    recurrence_type = "interval",
+    recurrence_day = null,
   } = options;
 
   const result = db.run(
-    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id, last_completed_at, postpone_days)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (user_id, name, notes, interval_days, is_recurring, due_date, category_id, assigned_member_id, last_completed_at, postpone_days, recurrence_type, recurrence_day)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       userId,
       name,
@@ -109,6 +113,8 @@ export function createTestTask(
       assigned_member_id,
       last_completed_at,
       postpone_days,
+      recurrence_type,
+      recurrence_day,
     ],
   );
   return Number(result.lastInsertRowid);

@@ -54,6 +54,8 @@ function app() {
       assigned_member_id: "",
       is_recurring: true,
       due_date: "",
+      recurrence_type: "interval",
+      recurrence_day: 1,
     },
     categoryForm: { name: "", color: DEFAULT_CATEGORY_COLOR },
     memberForm: { name: "" },
@@ -397,6 +399,48 @@ function app() {
       return `Overdue - ${this.formatDate(task.next_due)}`;
     },
 
+    recurrenceText(task) {
+      const n = task.interval_days || 1;
+      if (task.recurrence_type === "weekly") {
+        const days = [
+          "Sunday",
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
+        const dayName = days[task.recurrence_day] ?? "";
+        return n === 1
+          ? `Weekly on ${dayName}`
+          : `Every ${n} weeks on ${dayName}`;
+      }
+      if (task.recurrence_type === "monthly") {
+        const day = task.recurrence_day;
+        const ordinal = this.ordinalSuffix(day);
+        return n === 1
+          ? `Monthly on the ${day}${ordinal}`
+          : `Every ${n} months on the ${day}${ordinal}`;
+      }
+      return `Every ${task.interval_days} days`;
+    },
+
+    ordinalSuffix(n) {
+      const tens = n % 100;
+      if (tens >= 11 && tens <= 13) return "th";
+      switch (n % 10) {
+        case 1:
+          return "st";
+        case 2:
+          return "nd";
+        case 3:
+          return "rd";
+        default:
+          return "th";
+      }
+    },
+
     getStatusForDay(task, daysFromToday) {
       const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
@@ -540,6 +584,8 @@ function app() {
         assigned_member_id: "",
         is_recurring: true,
         due_date: "",
+        recurrence_type: "interval",
+        recurrence_day: 1,
       };
       this.showTaskModal = true;
     },
@@ -554,11 +600,16 @@ function app() {
         assigned_member_id: task.assigned_member_id || "",
         is_recurring: !!task.is_recurring,
         due_date: task.due_date || "",
+        recurrence_type: task.recurrence_type || "interval",
+        recurrence_day: task.recurrence_day ?? 1,
       };
       this.showTaskModal = true;
     },
 
     async saveTask() {
+      const recurrenceType = this.taskForm.is_recurring
+        ? this.taskForm.recurrence_type
+        : "interval";
       const data = {
         name: this.taskForm.name,
         notes: this.taskForm.notes || null,
@@ -571,6 +622,11 @@ function app() {
           : this.taskForm.due_date || null,
         category_id: this.taskForm.category_id || null,
         assigned_member_id: this.taskForm.assigned_member_id || null,
+        recurrence_type: recurrenceType,
+        recurrence_day:
+          recurrenceType === "weekly" || recurrenceType === "monthly"
+            ? this.taskForm.recurrence_day
+            : null,
       };
       try {
         const url = this.editingTaskId
