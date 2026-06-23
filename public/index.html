@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home Todo Planner</title>
+  <title>Todo Planner</title>
 
   <!-- Favicons -->
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -35,7 +35,10 @@
     <header class="bg-white border-b border-slate-200 sticky top-0 z-50" x-show="user">
       <div class="max-w-6xl mx-auto px-4 py-4">
         <div class="flex items-center justify-between flex-wrap gap-4">
-          <h1 class="text-xl font-bold text-slate-900">Home Todo Planner</h1>
+          <h1 class="flex items-center gap-2 text-xl font-bold text-slate-900">
+            <img src="/logo.svg" alt="" width="32" height="32" class="w-8 h-8 rounded-lg" />
+            Todo Planner
+          </h1>
           <nav class="flex items-center gap-1 flex-wrap">
             <button @click="currentPage = 'dashboard'"
               :class="currentPage === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'"
@@ -70,18 +73,14 @@
             <div class="p-8">
               <!-- App branding -->
               <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                  <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                </div>
-                <h1 class="text-xl font-bold text-slate-900">Home Todo Planner</h1>
-                <p x-show="isLogin" class="text-slate-500 text-sm mt-1">Keep your home running smoothly</p>
+                <img src="/logo.svg" alt="Todo Planner" width="64" height="64"
+                  class="w-16 h-16 mx-auto mb-4 rounded-2xl shadow-md" />
+                <h1 class="text-xl font-bold text-slate-900">Todo Planner</h1>
+                <p x-show="isLogin" class="text-slate-500 text-sm mt-1">Keep everything on track</p>
               </div>
 
               <h2 class="text-2xl font-bold text-center mb-6"
-                x-text="isLogin ? 'Sign in to your household' : 'Set up your household'"></h2>
+                x-text="isLogin ? 'Sign in to your workspace' : 'Set up your workspace'"></h2>
 
               <div x-show="authError" class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm"
                 x-text="authError"></div>
@@ -113,9 +112,9 @@
               </form>
 
               <p class="mt-4 text-center text-sm text-slate-600" x-show="allowSignups || !isLogin">
-                <span x-text="isLogin ? 'New here?' : 'Already have a household?'"></span>
+                <span x-text="isLogin ? 'New here?' : 'Already have a workspace?'"></span>
                 <button @click="isLogin = !isLogin; authError = ''" class="text-blue-600 hover:underline ml-1"
-                  x-text="isLogin ? 'Create a household' : 'Sign in'"></button>
+                  x-text="isLogin ? 'Create a workspace' : 'Sign in'"></button>
               </p>
             </div>
           </div>
@@ -577,7 +576,7 @@
             <!-- Members Card -->
             <div class="bg-white rounded-xl border border-slate-200 p-6">
               <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold text-slate-900">Household Members</h3>
+                <h3 class="text-lg font-semibold text-slate-900">Members</h3>
                 <button @click="openMemberModal()"
                   class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-1">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -627,7 +626,7 @@
 
               <div x-show="members.length === 0" class="text-center py-8">
                 <div class="text-3xl mb-2">👥</div>
-                <p class="text-sm text-slate-500">No household members yet</p>
+                <p class="text-sm text-slate-500">No members yet</p>
               </div>
             </div>
           </div>

@@ -1,15 +1,15 @@
-# Home Todo Planner
+# Todo Planner
 
-A household chore management app with recurring tasks, built with Bun and SQLite.
+A task management app with recurring tasks, built with Bun and SQLite.
 
 ## Features
 
 - **Recurring Tasks**: Every task has a custom repeat interval (e.g., every 3 days, every week)
 - **Task Status**: Tasks show as Done (green), Due Today (yellow), or Overdue (red)
-- **Household Members**: Add family members to assign tasks and track completions
+- **Members**: Add members to assign tasks and track completions
 - **Categories**: Organize tasks by room/area (Kitchen, Bathroom, Garden, etc.)
 - **Completion History**: Track who completed what and when
-- **Simple Authentication**: One account with named household members inside
+- **Simple Authentication**: One account with named members inside
 
 ## Tech Stack
 
@@ -156,7 +156,7 @@ If you ran the seed script:
 
 ### Members
 
-- `GET /api/members` - List household members
+- `GET /api/members` - List members
 - `POST /api/members` - Add member
 - `PUT /api/members/:id` - Update member
 - `DELETE /api/members/:id` - Remove member

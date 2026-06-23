@@ -1,7 +1,7 @@
 {
-  "name": "Home Todo Planner",
+  "name": "Todo Planner",
   "short_name": "Todo Planner",
-  "description": "Household chore management app with recurring tasks",
+  "description": "Task management app with recurring tasks",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",

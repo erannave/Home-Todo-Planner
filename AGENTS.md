@@ -12,7 +12,7 @@ biome check --write      # Format and lint
 
 ## Architecture
 
-This is a household chore management app with recurring tasks.
+This is a task management app with recurring tasks.
 
 **Stack:** Bun runtime, Hono web framework, SQLite database, Alpine.js + Tailwind CSS frontend (via CDN)
 

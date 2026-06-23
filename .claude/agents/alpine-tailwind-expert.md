@@ -63,7 +63,7 @@ When creating or reviewing components:
 
 ## Project Context
 
-This project uses Alpine.js and Tailwind CSS via CDN in a single-page application (`public/index.html`). The app is a household chore management system with tasks, categories, and members. Follow the existing patterns in the codebase while applying best practices.
+This project uses Alpine.js and Tailwind CSS via CDN in a single-page application (`public/index.html`). The app is a task management system with tasks, categories, and members. Follow the existing patterns in the codebase while applying best practices.
 
 When reviewing code, focus on:
 - Reactive state management efficiency
